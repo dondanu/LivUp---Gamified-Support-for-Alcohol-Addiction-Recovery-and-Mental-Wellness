@@ -20,7 +20,12 @@ const logTrigger = async (req, res) => {
 
     const date = logDate || new Date().toISOString().split('T')[0];
 
-    const { data: insertResult } = await query('INSERT INTO trigger_logs (user_id, trigger_type, intensity, log_date, notes) VALUES (?, ?, ?, ?, ?)', [userId, triggerType, intensity, date, notes || null]);
+    const { data: insertResult, error: insertError } = await query('INSERT INTO trigger_logs (user_id, trigger_type, intensity, log_date, notes) VALUES (?, ?, ?, ?, ?)', [userId, triggerType, intensity, date, notes || null]);
+    
+    if (insertError || !insertResult) {
+      return res.status(500).json({ error: 'Failed to log trigger', details: insertError?.message });
+    }
+    
     const { data: triggerLog } = await queryOne('SELECT * FROM trigger_logs WHERE id = ?', [insertResult.insertId]);
 
     res.status(201).json({ message: 'Trigger logged successfully', triggerLog });

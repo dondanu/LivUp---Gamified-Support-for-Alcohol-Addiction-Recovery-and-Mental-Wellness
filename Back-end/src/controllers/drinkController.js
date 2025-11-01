@@ -20,7 +20,12 @@ const logDrink = async (req, res) => {
       const { data: updatedLog } = await queryOne('SELECT * FROM drink_logs WHERE id = ?', [existingLog.id]);
       drinkLog = updatedLog;
     } else {
-      const { data: insertResult } = await query('INSERT INTO drink_logs (user_id, drink_count, log_date, notes) VALUES (?, ?, ?, ?)', [userId, drinkCount, date, notes || null]);
+      const { data: insertResult, error: insertError } = await query('INSERT INTO drink_logs (user_id, drink_count, log_date, notes) VALUES (?, ?, ?, ?)', [userId, drinkCount, date, notes || null]);
+      
+      if (insertError || !insertResult) {
+        return res.status(500).json({ error: 'Failed to log drink', details: insertError?.message });
+      }
+      
       const { data: newLog } = await queryOne('SELECT * FROM drink_logs WHERE id = ?', [insertResult.insertId]);
       drinkLog = newLog;
     }

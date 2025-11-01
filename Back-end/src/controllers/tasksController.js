@@ -44,7 +44,12 @@ const completeTask = async (req, res) => {
       return res.status(409).json({ error: 'Task already completed for this date' });
     }
 
-    const { data: insertResult } = await query('INSERT INTO user_daily_tasks (user_id, task_id, completion_date) VALUES (?, ?, ?)', [userId, taskId, date]);
+    const { data: insertResult, error: insertError } = await query('INSERT INTO user_daily_tasks (user_id, task_id, completion_date) VALUES (?, ?, ?)', [userId, taskId, date]);
+    
+    if (insertError || !insertResult) {
+      return res.status(500).json({ error: 'Failed to complete task', details: insertError?.message });
+    }
+    
     const { data: completion } = await queryOne('SELECT * FROM user_daily_tasks WHERE id = ?', [insertResult.insertId]);
 
     const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
@@ -94,11 +99,11 @@ const getTodayProgress = async (req, res) => {
     const { data: completedToday } = await query('SELECT udt.*, dt.* FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date = ?', [userId, today]);
     const { data: allTasks } = await query('SELECT * FROM daily_tasks WHERE is_active = 1', []);
 
-    const completedTaskIds = new Set((completedToday.data || []).map(ct => ct.task_id));
-    const availableTasks = (allTasks.data || []).filter(task => !completedTaskIds.has(task.id));
-    const totalPointsEarnedToday = (completedToday.data || []).reduce((sum, ct) => sum + (ct.points_reward || 0), 0);
+    const completedTaskIds = new Set((completedToday || []).map(ct => ct.task_id));
+    const availableTasks = (allTasks || []).filter(task => !completedTaskIds.has(task.id));
+    const totalPointsEarnedToday = (completedToday || []).reduce((sum, ct) => sum + (ct.points_reward || 0), 0);
 
-    res.status(200).json({ today, completedTasks: completedToday.data || [], availableTasks, completedCount: (completedToday.data || []).length, totalPointsEarnedToday });
+    res.status(200).json({ today, completedTasks: completedToday || [], availableTasks, completedCount: (completedToday || []).length, totalPointsEarnedToday });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
@@ -110,7 +115,7 @@ const getTaskStatistics = async (req, res) => {
 
     const { data: completedTasks } = await query('SELECT udt.*, dt.category, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ?', [userId]);
 
-    const tasksArray = completedTasks.data || [];
+    const tasksArray = completedTasks || [];
     const totalTasksCompleted = tasksArray.length;
 
     const categoryCounts = tasksArray.reduce((acc, task) => {

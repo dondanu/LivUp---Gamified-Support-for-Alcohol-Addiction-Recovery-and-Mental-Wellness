@@ -9,7 +9,12 @@ const addSOSContact = async (req, res) => {
       return res.status(400).json({ error: 'Contact name and phone are required' });
     }
 
-    const { data: insertResult } = await query('INSERT INTO sos_contacts (user_id, contact_name, contact_phone, relationship, is_active) VALUES (?, ?, ?, ?, ?)', [userId, contactName, contactPhone, relationship || null, true]);
+    const { data: insertResult, error: insertError } = await query('INSERT INTO sos_contacts (user_id, contact_name, contact_phone, relationship, is_active) VALUES (?, ?, ?, ?, ?)', [userId, contactName, contactPhone, relationship || null, true]);
+    
+    if (insertError || !insertResult) {
+      return res.status(500).json({ error: 'Failed to add SOS contact', details: insertError?.message });
+    }
+    
     const { data: contact } = await queryOne('SELECT * FROM sos_contacts WHERE id = ?', [insertResult.insertId]);
 
     res.status(201).json({ message: 'SOS contact added successfully', contact });

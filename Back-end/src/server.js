@@ -2,6 +2,13 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Validate required environment variables
+if (!process.env.JWT_SECRET) {
+  console.error('❌ ERROR: JWT_SECRET environment variable is required!');
+  console.error('Please add JWT_SECRET to your .env file');
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 

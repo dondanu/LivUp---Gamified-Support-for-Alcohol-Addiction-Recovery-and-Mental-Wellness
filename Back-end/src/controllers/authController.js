@@ -15,15 +15,15 @@ const register = async (req, res) => {
     }
 
     // Check if username exists
-    const existingUser = await queryOne('SELECT id FROM users WHERE username = ?', [username]);
-    if (existingUser.data) {
+    const { data: existingUser } = await queryOne('SELECT id FROM users WHERE username = ?', [username]);
+    if (existingUser) {
       return res.status(409).json({ error: 'Username already exists' });
     }
 
     // Check if email exists
     if (email) {
-      const existingEmail = await queryOne('SELECT id FROM users WHERE email = ?', [email]);
-      if (existingEmail.data) {
+      const { data: existingEmail } = await queryOne('SELECT id FROM users WHERE email = ?', [email]);
+      if (existingEmail) {
         return res.status(409).json({ error: 'Email already exists' });
       }
     }

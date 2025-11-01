@@ -28,7 +28,12 @@ const logMood = async (req, res) => {
       const { data: updatedLog } = await queryOne('SELECT * FROM mood_logs WHERE id = ?', [existingLog.id]);
       moodLog = updatedLog;
     } else {
-      const { data: insertResult } = await query('INSERT INTO mood_logs (user_id, mood_type, mood_score, log_date, notes) VALUES (?, ?, ?, ?, ?)', [userId, moodType, moodScore, date, notes || null]);
+      const { data: insertResult, error: insertError } = await query('INSERT INTO mood_logs (user_id, mood_type, mood_score, log_date, notes) VALUES (?, ?, ?, ?, ?)', [userId, moodType, moodScore, date, notes || null]);
+      
+      if (insertError || !insertResult) {
+        return res.status(500).json({ error: 'Failed to log mood', details: insertError?.message });
+      }
+      
       const { data: newLog } = await queryOne('SELECT * FROM mood_logs WHERE id = ?', [insertResult.insertId]);
       moodLog = newLog;
     }

@@ -90,13 +90,13 @@ const getOverallProgress = async (req, res) => {
     const totalDrinks = drinkLogsArray.reduce((sum, log) => sum + log.drink_count, 0);
     const soberDays = drinkLogsArray.filter(log => log.drink_count === 0).length;
 
-    const daysInApp = Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24));
+    const daysInApp = user ? Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24)) : 0;
 
     res.status(200).json({
-      overallProgress: {
+        overallProgress: {
         profile: { totalPoints: profile.total_points, currentStreak: profile.current_streak, longestStreak: profile.longest_streak, daysSober: profile.days_sober, level: currentLevel, avatar: profile.avatar_type },
-        statistics: { daysInApp, totalDrinks, soberDays, tasksCompleted: (allCompletedTasks.data || []).length, achievementsEarned: (earnedAchievements.data || []).length, totalAchievements: (allAchievements.data || []).length, achievementProgress: ((earnedAchievements.data || []).length / (allAchievements.data || []).length * 100).toFixed(2) },
-        recentAchievements: (earnedAchievements.data || []).slice(0, 5)
+        statistics: { daysInApp, totalDrinks, soberDays, tasksCompleted: (allCompletedTasks || []).length, achievementsEarned: (earnedAchievements || []).length, totalAchievements: (allAchievements || []).length, achievementProgress: ((earnedAchievements || []).length / (allAchievements || []).length * 100).toFixed(2) },
+        recentAchievements: (earnedAchievements || []).slice(0, 5)
       }
     });
   } catch (error) {
@@ -117,14 +117,14 @@ const getDashboardData = async (req, res) => {
     const { data: recentAchievements } = await query('SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ? ORDER BY ua.earned_at DESC LIMIT 3', [userId]);
     const { data: quotes } = await query('SELECT * FROM motivational_quotes WHERE is_active = 1', []);
 
-    const quotesArray = quotes.data || [];
+    const quotesArray = quotes || [];
     const randomQuote = quotesArray[Math.floor(Math.random() * quotesArray.length)];
 
     res.status(200).json({
       dashboard: {
         profile: { totalPoints: profile.total_points, currentStreak: profile.current_streak, daysSober: profile.days_sober, level: currentLevel, avatar: profile.avatar_type },
-        today: { drinkLog: todayDrinkLog || null, moodLog: todayMoodLog || null, tasksCompleted: (todayTasks.data || []).length },
-        recentAchievements: recentAchievements.data || [],
+        today: { drinkLog: todayDrinkLog || null, moodLog: todayMoodLog || null, tasksCompleted: (todayTasks || []).length },
+        recentAchievements: recentAchievements || [],
         motivationalQuote: randomQuote || null
       }
     });
