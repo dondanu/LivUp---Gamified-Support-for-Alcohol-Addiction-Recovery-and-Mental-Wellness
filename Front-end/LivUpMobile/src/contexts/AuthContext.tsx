@@ -1,23 +1,33 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../lib/api';
 
 type Profile = {
-  id: string;
-  username?: string | null;
-  total_points?: number | null;
-  current_streak?: number | null;
-  level?: string | null;
-  avatar_level?: number | null;
+  id: number;
+  user_id: number;
+  username?: string;
+  total_points?: number;
+  current_streak?: number;
+  longest_streak?: number;
+  level_id?: number;
+  avatar_type?: string;
+  days_sober?: number;
+  level?: string;
+  avatar_level?: number;
+};
+
+type User = {
+  id: number;
+  username: string;
+  email?: string | null;
+  is_anonymous?: boolean;
 };
 
 interface AuthContextType {
-  session: Session | null;
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, username?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (username: string, password: string, email?: string) => Promise<{ error: any }>;
+  signIn: (username: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   signInAnonymously: () => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
@@ -26,106 +36,82 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error) throw error;
-      setProfile(data as Profile);
+      const data = await apiClient.getProfile();
+      setUser(data.user);
+      setProfile(data.profile);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setUser(null);
+      setProfile(null);
     }
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
+    const initAuth = async () => {
+      try {
+        await fetchProfile();
+      } catch (error) {
+        // Not logged in
+        setUser(null);
+        setProfile(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, sess) => {
-        (async () => {
-          setSession(sess);
-          setUser(sess?.user ?? null);
-
-          if (sess?.user) {
-            await fetchProfile(sess.user.id);
-          } else {
-            setProfile(null);
-          }
-        })();
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    };
+    initAuth();
   }, []);
 
-  const signUp = async (email: string, password: string, username?: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { username: username || email.split('@')[0] } },
-    });
-
-    if (!error && data.user) {
-      await fetchProfile(data.user.id);
+  const signUp = async (username: string, password: string, email?: string) => {
+    try {
+      const data = await apiClient.register(username, password, email, false);
+      setUser(data.user);
+      await fetchProfile();
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || 'Registration failed' };
     }
-
-    return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (!error && data.user) {
-      await fetchProfile(data.user.id);
+  const signIn = async (username: string, password: string) => {
+    try {
+      const data = await apiClient.login(username, password);
+      setUser(data.user);
+      await fetchProfile();
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || 'Login failed' };
     }
-
-    return { error };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await apiClient.logout();
+    setUser(null);
     setProfile(null);
   };
 
   const signInAnonymously = async () => {
-    const { data, error } = await supabase.auth.signInAnonymously();
-
-    if (!error && data.user) {
-      await supabase
-        .from('profiles')
-        .update({ is_anonymous: true })
-        .eq('id', data.user.id);
-
-      await fetchProfile(data.user.id);
+    try {
+      const randomUsername = `anonymous_${Date.now()}`;
+      const data = await apiClient.register(randomUsername, 'temp_password', undefined, true);
+      setUser(data.user);
+      await fetchProfile();
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || 'Anonymous login failed' };
     }
-
-    return { error };
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      await fetchProfile(user.id);
-    }
+    await fetchProfile();
   };
 
   const value: AuthContextType = {
-    session,
     user,
     profile,
     loading,
@@ -146,5 +132,3 @@ export function useAuth() {
   }
   return context;
 }
-
-
