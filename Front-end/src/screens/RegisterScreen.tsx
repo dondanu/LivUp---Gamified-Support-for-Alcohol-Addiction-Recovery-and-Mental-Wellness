@@ -5,37 +5,39 @@ import { Heart } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 
-export default function LoginScreen() {
-  const { signIn, signInAnonymously } = useAuth();
+export default function RegisterScreen() {
+  const { signUp } = useAuth();
   const navigation = useNavigation<any>();
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [anonymousLoading, setAnonymousLoading] = useState(false);
 
-  const onLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+  const onRegister = async () => {
+    if (!username || !password) {
+      Alert.alert('Error', 'Please enter username and password');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
 
     setLoading(true);
-    // Use email as username (many systems allow email as username)
-    const { error } = await signIn(email.trim(), password);
+    const { error } = await signUp(username, password, email || undefined);
     setLoading(false);
     
     if (error) {
-      Alert.alert('Login error', String(error));
-    }
-  };
-
-  const onAnonymousLogin = async () => {
-    setAnonymousLoading(true);
-    const { error } = await signInAnonymously();
-    setAnonymousLoading(false);
-    
-    if (error) {
-      Alert.alert('Error', String(error));
+      Alert.alert('Registration error', String(error));
+    } else {
+      // Success - navigation will happen automatically via AuthContext
     }
   };
 
@@ -62,13 +64,21 @@ export default function LoginScreen() {
             <Text style={styles.appTitle}>SoberPath</Text>
 
             {/* Tagline */}
-            <Text style={styles.tagline}>Your Journey to Recovery Starts Here</Text>
+            <Text style={styles.tagline}>Create Your Account</Text>
 
             {/* Input Fields */}
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                placeholder="Email"
+                placeholder="Username"
+                placeholderTextColor="#999"
+                autoCapitalize="none"
+                value={username}
+                onChangeText={setUsername}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Email (optional)"
                 placeholderTextColor="#999"
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -83,40 +93,35 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
               />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                placeholderTextColor="#999"
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
             </View>
 
-            {/* Sign In Button */}
+            {/* Sign Up Button */}
             <TouchableOpacity
-              style={styles.signInButton}
-              onPress={onLogin}
+              style={styles.signUpButton}
+              onPress={onRegister}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={styles.signUpButtonText}>Sign Up</Text>
               )}
             </TouchableOpacity>
 
-            {/* Continue Anonymously Button */}
+            {/* Back to Login Link */}
             <TouchableOpacity
-              style={styles.anonymousButton}
-              onPress={onAnonymousLogin}
-              disabled={anonymousLoading}
+              style={styles.loginLink}
+              onPress={() => navigation.goBack()}
             >
-              {anonymousLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.anonymousButtonText}>Continue Anonymously</Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Sign Up Link */}
-            <TouchableOpacity
-              style={styles.signUpLink}
-              onPress={() => navigation.navigate('Register')}
-            >
-              <Text style={styles.signUpText}>Don't have an account? Sign Up</Text>
+              <Text style={styles.loginText}>Already have an account? Sign In</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -173,27 +178,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  signInButton: {
+  signUpButton: {
     backgroundColor: '#2E86AB',
-    width: '100%',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  signInButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  anonymousButton: {
-    backgroundColor: '#87CEEB',
     width: '100%',
     paddingVertical: 16,
     borderRadius: 12,
@@ -202,21 +188,22 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 5,
   },
-  anonymousButtonText: {
+  signUpButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  signUpLink: {
+  loginLink: {
     marginTop: 8,
   },
-  signUpText: {
+  loginText: {
     color: '#FFFFFF',
     fontSize: 14,
     textAlign: 'center',
   },
 });
+
