@@ -1,6 +1,14 @@
 # dependencies
 node_modules/
 
+# React Native Android build
+android/.gradle/
+android/app/build/
+android/build/
+android/.cxx/
+
+
+
 # expo
 .expo/
 dist/
