@@ -8,20 +8,19 @@ import { useNavigation } from '@react-navigation/native';
 export default function LoginScreen() {
   const { signIn, signInAnonymously } = useAuth();
   const navigation = useNavigation<any>();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [anonymousLoading, setAnonymousLoading] = useState(false);
 
   const onLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+    if (!username || !password) {
+      Alert.alert('Error', 'Please enter username/email and password');
       return;
     }
 
     setLoading(true);
-    // Use email as username (many systems allow email as username)
-    const { error } = await signIn(email.trim(), password);
+    const { error } = await signIn(username.trim(), password);
     setLoading(false);
     
     if (error) {
@@ -68,12 +67,11 @@ export default function LoginScreen() {
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                placeholder="Email"
+                placeholder="Username or Email"
                 placeholderTextColor="#999"
                 autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
+                value={username}
+                onChangeText={setUsername}
               />
               <TextInput
                 style={styles.input}

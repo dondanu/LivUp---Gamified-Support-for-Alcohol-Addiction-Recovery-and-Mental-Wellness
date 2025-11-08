@@ -61,14 +61,14 @@ function RootNavigator() {
 function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+    <SafeAreaProvider>
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-        <AuthProvider>
-          <NavigationContainer>
+      <AuthProvider>
+        <NavigationContainer>
             <RootNavigator />
-          </NavigationContainer>
-        </AuthProvider>
-      </SafeAreaProvider>
+        </NavigationContainer>
+      </AuthProvider>
+    </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

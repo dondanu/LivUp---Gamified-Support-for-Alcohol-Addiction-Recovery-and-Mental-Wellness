@@ -85,7 +85,21 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const { data: user, error } = await queryOne('SELECT * FROM users WHERE username = ?', [username]);
+    // Try to find user by username first, then by email
+    let user, error;
+    const { data: userByUsername, error: errorUsername } = await queryOne('SELECT * FROM users WHERE username = ?', [username]);
+    
+    if (userByUsername) {
+      user = userByUsername;
+    } else {
+      // If not found by username, try email
+      const { data: userByEmail, error: errorEmail } = await queryOne('SELECT * FROM users WHERE email = ?', [username]);
+      if (userByEmail) {
+        user = userByEmail;
+      } else {
+        error = errorEmail || errorUsername;
+      }
+    }
 
     if (error || !user) {
       return res.status(401).json({ error: 'Invalid credentials' });
