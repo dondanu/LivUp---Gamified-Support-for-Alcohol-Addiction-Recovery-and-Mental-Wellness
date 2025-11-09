@@ -1,76 +1,125 @@
 import React from 'react';
-import { ActivityIndicator, StatusBar, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { enableScreens } from 'react-native-screens';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider } from './src/contexts/AuthContext';
-import { useAuth } from './src/contexts/AuthContext';
-import HomeScreen from './src/screens/HomeScreen';
-import PlaceholderScreen from './src/screens/PlaceholderScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import RegisterScreen from './src/screens/RegisterScreen';
-import SOSScreen from './src/screens/SOSScreen';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { StatusBar, Platform } from 'react-native';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Home, Activity, TrendingUp, Target, User } from 'lucide-react-native';
+import 'react-native-gesture-handler';
 
-enableScreens();
+// Screens
+import LoginScreen from './app/(auth)/login';
+import RegisterScreen from './app/(auth)/register';
+import HomeScreen from './app/(tabs)/index';
+import TrackScreen from './app/(tabs)/track';
+import ProgressScreen from './app/(tabs)/progress';
+import ChallengesScreen from './app/(tabs)/challenges';
+import ProfileScreen from './app/(tabs)/profile';
+import SOSScreen from './app/sos';
+import NotFoundScreen from './app/+not-found';
+import IndexScreen from './app/index';
+
 const Stack = createNativeStackNavigator();
-const Tabs = createBottomTabNavigator();
+const Tab = createBottomTabNavigator();
 
-function TabsNavigator() {
+function TabNavigator() {
   return (
-    <Tabs.Navigator screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="Home" component={HomeScreen} />
-      <Tabs.Screen name="Track" component={PlaceholderScreen} />
-      <Tabs.Screen name="Challenges" component={PlaceholderScreen} />
-      <Tabs.Screen name="Profile" component={PlaceholderScreen} />
-    </Tabs.Navigator>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: '#4ECDC4',
+        tabBarInactiveTintColor: '#95A5A6',
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E0E0E0',
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
+      }}>
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Track"
+        component={TrackScreen}
+        options={{
+          tabBarIcon: ({ size, color }) => <Activity size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Progress"
+        component={ProgressScreen}
+        options={{
+          tabBarIcon: ({ size, color }) => <TrendingUp size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Challenges"
+        component={ChallengesScreen}
+        options={{
+          tabBarIcon: ({ size, color }) => <Target size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarIcon: ({ size, color }) => <User size={size} color={color} />,
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
-function RootNavigator() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
-      </View>
-    );
-  }
-
+function AuthNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {user ? (
-        <>
-          <Stack.Screen name="Root" component={TabsNavigator} />
-          <Stack.Screen name="SOS" component={SOSScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} options={{ presentation: 'modal' }} />
-        </>
-      ) : (
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-        </>
-      )}
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );
 }
 
-function App() {
+function RootNavigator() {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return <IndexScreen />;
+  }
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-    <SafeAreaProvider>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <AuthProvider>
-        <NavigationContainer>
-            <RootNavigator />
-        </NavigationContainer>
-      </AuthProvider>
-    </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {session ? (
+        <>
+          <Stack.Screen name="Tabs" component={TabNavigator} />
+          <Stack.Screen name="SOS" component={SOSScreen} />
+        </>
+      ) : (
+        <Stack.Screen name="Auth" component={AuthNavigator} />
+      )}
+      <Stack.Screen name="NotFound" component={NotFoundScreen} />
+    </Stack.Navigator>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <NavigationContainer>
+        <StatusBar barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'} />
+        <RootNavigator />
+      </NavigationContainer>
+    </AuthProvider>
+  );
+}
+
