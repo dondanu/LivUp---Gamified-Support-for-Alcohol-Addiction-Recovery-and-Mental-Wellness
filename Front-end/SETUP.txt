@@ -1,0 +1,74 @@
+═══════════════════════════════════════════════════════════════
+           HOW TO SETUP AND RUN THIS PROJECT
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Copy Project to Your Laptop
+───────────────────────────────────────────────────────────────
+1. Copy the entire project folder from pendrive to your laptop
+2. Place it in a SHORT path like: C:\Projects\vimmi404
+   (Avoid long paths like: C:\Users\YourName\Desktop\VeryLongFolderName)
+
+STEP 2: Install Node.js (If Not Installed)
+───────────────────────────────────────────────────────────────
+1. Download Node.js from: https://nodejs.org/
+2. Install it (choose LTS version)
+3. Restart your computer after installation
+
+STEP 3: Install Dependencies
+───────────────────────────────────────────────────────────────
+1. Open PowerShell in the project folder
+2. Run this command:
+   npm install
+   
+   (This will take 5-10 minutes the first time)
+
+STEP 4: Run the App
+───────────────────────────────────────────────────────────────
+1. Connect your Android phone or start Android Studio emulator
+2. Run this command:
+   npx react-native run-android
+   
+   (First build will take 5-10 minutes)
+
+═══════════════════════════════════════════════════════════════
+QUICK START (All in One)
+═══════════════════════════════════════════════════════════════
+
+Just run this script:
+   .\INSTALL-AND-RUN.bat
+
+This will do everything automatically!
+
+═══════════════════════════════════════════════════════════════
+REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+- Windows 10/11
+- Node.js (v18 or higher) - Download from nodejs.org
+- Android Studio (for Android development)
+- Android phone OR Android Studio Emulator
+
+═══════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════
+
+Problem: "npm is not recognized"
+Solution: Install Node.js from nodejs.org and restart computer
+
+Problem: "Destination Path Too Long"
+Solution: Copy project to a shorter path like C:\Projects\vimmi404
+
+Problem: Build takes too long
+Solution: First build is always slow (5-10 minutes). Later builds are faster.
+
+Problem: App doesn't run
+Solution: Make sure Android phone is connected or emulator is running
+
+═══════════════════════════════════════════════════════════════
+NEED HELP?
+═══════════════════════════════════════════════════════════════
+
+Contact the person who gave you this project for help.
+
+═══════════════════════════════════════════════════════════════
+

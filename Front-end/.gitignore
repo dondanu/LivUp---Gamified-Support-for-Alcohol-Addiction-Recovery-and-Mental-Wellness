@@ -1,14 +1,6 @@
 # dependencies
 node_modules/
 
-# React Native Android build
-android/.gradle/
-android/app/build/
-android/build/
-android/.cxx/
-
-
-
 # expo
 .expo/
 dist/
@@ -41,3 +33,21 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# android build folders (exclude from version control, reduces path length issues)
+android/app/build/
+android/app/.cxx/
+android/build/
+android/.gradle/
+
+# ios build folders
+ios/build/
+ios/Pods/
+ios/.xcode.env.local
+
+# metro cache
+.metro/
+
+# build logs
+*.log
+build*.log

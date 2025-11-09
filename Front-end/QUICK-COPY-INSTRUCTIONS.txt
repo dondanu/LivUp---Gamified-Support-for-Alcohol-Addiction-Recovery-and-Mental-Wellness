@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════════════════
+  QUICK GUIDE: Copy Project to Another Folder
+═══════════════════════════════════════════════════════════════
+
+PROBLEM: "Destination Path Too Long" error when copying project
+
+SOLUTION: Use these 3 simple steps:
+
+───────────────────────────────────────────────────────────────
+STEP 1: Clean the project
+───────────────────────────────────────────────────────────────
+Run this in PowerShell (in the project folder):
+    .\clean-for-copy.ps1
+
+This removes build folders that cause long path issues.
+
+───────────────────────────────────────────────────────────────
+STEP 2: Copy the project
+───────────────────────────────────────────────────────────────
+Option A - Using script (recommended):
+    .\copy-project.ps1 -DestinationPath "C:\Your\New\Path"
+
+Option B - Manual copy:
+    - Use a SHORT destination path (e.g., C:\Projects\MyApp)
+    - Copy all files EXCEPT:
+      * node_modules (will reinstall)
+      * android\app\build
+      * android\app\.cxx
+      * android\build
+      * android\.gradle
+
+───────────────────────────────────────────────────────────────
+STEP 3: Setup the new project
+───────────────────────────────────────────────────────────────
+1. Navigate to the new folder:
+    cd "C:\Your\New\Path"
+
+2. Run setup script:
+    .\setup-new-project.ps1
+
+    OR manually:
+    npm install
+    cd android
+    .\gradlew clean
+    cd ..
+
+3. Run the app:
+    npx react-native run-android
+
+═══════════════════════════════════════════════════════════════
+IF STILL GETTING "PATH TOO LONG" ERROR:
+═══════════════════════════════════════════════════════════════
+
+Option 1: Enable Windows Long Path Support (one-time setup)
+    - Run PowerShell as Administrator
+    - Run: .\Enable-LongPathSupport.ps1
+    - Restart your computer
+    - Then copy normally
+
+Option 2: Use a shorter destination path
+    - Instead of: C:\Users\Name\Desktop\VeryLongFolder\Project
+    - Use: C:\MyApp or D:\App
+
+Option 3: Use Git (if project is in Git)
+    - Clone the repository to new location
+    - Git handles long paths better than Windows Explorer
+
+═══════════════════════════════════════════════════════════════
+SCRIPTS INCLUDED:
+═══════════════════════════════════════════════════════════════
+
+1. clean-for-copy.ps1          - Cleans build artifacts
+2. copy-project.ps1            - Copies project (handles long paths)
+3. setup-new-project.ps1       - Sets up project after copying
+4. Enable-LongPathSupport.ps1  - Enables Windows long path support
+
+═══════════════════════════════════════════════════════════════
+For detailed instructions, see: COPY-PROJECT-GUIDE.md
+═══════════════════════════════════════════════════════════════
+
