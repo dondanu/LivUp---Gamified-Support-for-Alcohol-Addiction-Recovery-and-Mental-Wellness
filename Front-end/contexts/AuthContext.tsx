@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/lib/api';
 import { Profile } from '@/types/database.types';
 
@@ -54,11 +55,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updated_at: response.profile.updated_at,
       };
       setProfile(profileData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching profile:', error);
       // If profile fetch fails, user might not be authenticated
       setUser(null);
       setProfile(null);
+      // Re-throw if it's a network error so we can handle it appropriately
+      if (error.message && error.message.includes('Cannot connect')) {
+        throw error;
+      }
     }
   };
 
@@ -66,9 +71,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check if user is already authenticated (has token)
     const checkAuth = async () => {
       try {
-        await fetchProfile();
-      } catch (error) {
-        // Not authenticated or token expired
+        // Check if we have a token first
+        const token = await AsyncStorage.getItem('@auth_token');
+        
+        if (token) {
+          // Only try to fetch profile if we have a token
+          await fetchProfile();
+        } else {
+          // No token, user is not authenticated
+          setUser(null);
+          setProfile(null);
+        }
+      } catch (error: any) {
+        // Not authenticated or token expired or network error
+        console.log('Auth check failed:', error.message);
         setUser(null);
         setProfile(null);
       } finally {
@@ -84,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await api.register(
         username || email.split('@')[0],
         password,
-        email,
+      email,
         false
       );
 
@@ -131,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Sign out error:', error);
       // Clear local state even if API call fails
       setUser(null);
-      setProfile(null);
+    setProfile(null);
     }
   };
 
