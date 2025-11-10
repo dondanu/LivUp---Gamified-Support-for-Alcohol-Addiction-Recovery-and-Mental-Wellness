@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { DrinkLog, MoodLog, TriggerLog, UserBadge } from '@/types/database.types';
 import { TrendingUp, Award, Calendar, Sparkles } from 'lucide-react-native';
 
@@ -38,17 +38,16 @@ export default function ProgressScreen() {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysToFetch);
 
-      const { data: drinkLogs } = await supabase
-        .from('drink_logs')
-        .select('*')
-        .eq('user_id', profile.id)
-        .gte('date', startDate.toISOString().split('T')[0])
-        .order('date', { ascending: true });
+      const drinkLogsResponse = await api.getDrinkLogs();
+      if (drinkLogsResponse.logs) {
+        const drinkLogs = drinkLogsResponse.logs.filter((log: any) => {
+          const logDate = new Date(log.date);
+          return logDate >= startDate;
+        }).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      if (drinkLogs) {
-        const chartData = drinkLogs.map((log) => ({
+        const chartData = drinkLogs.map((log: any) => ({
           x: new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          y: log.drinks_count,
+          y: log.drinks_count || 0,
         }));
         setDrinkData(chartData);
 
@@ -61,7 +60,7 @@ export default function ProgressScreen() {
           checkDate.setDate(today.getDate() - i);
           const dateString = checkDate.toISOString().split('T')[0];
 
-          const log = drinkLogs.find((l) => l.date === dateString);
+          const log = drinkLogs.find((l: any) => l.date === dateString);
 
           if (!log || log.drinks_count === 0) {
             currentStreak++;
@@ -73,26 +72,24 @@ export default function ProgressScreen() {
         setSoberDays(currentStreak);
       }
 
-      const { data: triggers } = await supabase
-        .from('trigger_logs')
-        .select('*')
-        .eq('user_id', profile.id)
-        .gte('date', startDate.toISOString().split('T')[0]);
+      const triggersResponse = await api.getTriggerLogs();
+      if (triggersResponse.logs) {
+        const triggers = triggersResponse.logs.filter((trigger: any) => {
+          const triggerDate = new Date(trigger.date);
+          return triggerDate >= startDate;
+        });
 
-      if (triggers) {
         const counts: { [key: string]: number } = {};
-        triggers.forEach((trigger) => {
+        triggers.forEach((trigger: any) => {
           counts[trigger.trigger_type] = (counts[trigger.trigger_type] || 0) + 1;
         });
         setTriggerCounts(counts);
       }
 
-      const { data: badges, count } = await supabase
-        .from('user_badges')
-        .select('*', { count: 'exact' })
-        .eq('user_id', profile.id);
-
-      setTotalBadges(count || 0);
+      const achievementsResponse = await api.getAchievements();
+      if (achievementsResponse.achievements) {
+        setTotalBadges(achievementsResponse.achievements.length);
+      }
     } catch (error) {
       console.error('Error loading progress data:', error);
     } finally {

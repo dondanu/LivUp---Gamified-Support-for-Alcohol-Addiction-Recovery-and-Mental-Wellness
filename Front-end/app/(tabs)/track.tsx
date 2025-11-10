@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import {
   Calendar,
   Plus,
@@ -66,31 +66,23 @@ export default function TrackScreen() {
     if (!profile?.id) return;
 
     try {
-      const { data: drinkLog } = await supabase
-        .from('drink_logs')
-        .select('*')
-        .eq('user_id', profile.id)
-        .eq('date', selectedDate)
-        .maybeSingle();
+      const drinkLogsResponse = await api.getDrinkLogs();
+      const drinkLog = drinkLogsResponse.logs?.find((log: any) => log.date === selectedDate);
 
       if (drinkLog) {
-        setDrinksCount(drinkLog.drinks_count);
-        setNotes(drinkLog.notes);
+        setDrinksCount(drinkLog.drinks_count || 0);
+        setNotes(drinkLog.notes || '');
       } else {
         setDrinksCount(0);
         setNotes('');
       }
 
-      const { data: moodLog } = await supabase
-        .from('mood_logs')
-        .select('*')
-        .eq('user_id', profile.id)
-        .eq('date', selectedDate)
-        .maybeSingle();
+      const moodLogsResponse = await api.getMoodLogs();
+      const moodLog = moodLogsResponse.logs?.find((log: any) => log.date === selectedDate);
 
       if (moodLog) {
         setMood(moodLog.mood);
-        setMoodNotes(moodLog.notes);
+        setMoodNotes(moodLog.notes || '');
       } else {
         setMood('');
         setMoodNotes('');
@@ -105,21 +97,11 @@ export default function TrackScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from('drink_logs').upsert(
-        {
-          user_id: profile.id,
-          date: selectedDate,
-          drinks_count: drinksCount,
-          notes: notes,
-        },
-        { onConflict: 'user_id,date' }
-      );
-
-      if (error) throw error;
+      await api.logDrink(drinksCount, selectedDate, notes);
       Alert.alert('Success', 'Drink log saved successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving drink log:', error);
-      Alert.alert('Error', 'Failed to save drink log');
+      Alert.alert('Error', error.message || 'Failed to save drink log');
     } finally {
       setLoading(false);
     }
@@ -129,23 +111,13 @@ export default function TrackScreen() {
     if (!profile?.id) return;
 
     try {
-      const { error } = await supabase.from('mood_logs').upsert(
-        {
-          user_id: profile.id,
-          date: selectedDate,
-          mood: selectedMood,
-          notes: moodNotes,
-        },
-        { onConflict: 'user_id,date' }
-      );
-
-      if (error) throw error;
+      await api.logMood(selectedMood, selectedDate, moodNotes);
       setMood(selectedMood);
       setShowMoodModal(false);
       Alert.alert('Success', 'Mood logged successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving mood log:', error);
-      Alert.alert('Error', 'Failed to save mood log');
+      Alert.alert('Error', error.message || 'Failed to save mood log');
     }
   };
 
@@ -153,21 +125,14 @@ export default function TrackScreen() {
     if (!profile?.id || !triggerType) return;
 
     try {
-      const { error } = await supabase.from('trigger_logs').insert({
-        user_id: profile.id,
-        date: selectedDate,
-        trigger_type: triggerType,
-        description: triggerDescription,
-      });
-
-      if (error) throw error;
+      await api.logTrigger(triggerType, triggerDescription, selectedDate);
       setTriggerType('');
       setTriggerDescription('');
       setShowTriggerModal(false);
       Alert.alert('Success', 'Trigger logged successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving trigger log:', error);
-      Alert.alert('Error', 'Failed to save trigger log');
+      Alert.alert('Error', error.message || 'Failed to save trigger log');
     }
   };
 

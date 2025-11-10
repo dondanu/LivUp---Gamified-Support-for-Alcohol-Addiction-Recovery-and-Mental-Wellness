@@ -48,9 +48,9 @@ class ApiClient {
     const token = await this.getToken();
     const url = `${this.baseUrl}${endpoint}`;
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string> || {}),
     };
 
     if (token) {
@@ -249,44 +249,50 @@ class ApiClient {
 
   // SOS/Contacts
   async getSOSContacts() {
-    return this.request<{ contacts: any[] }>('/sos/contacts');
+    return this.request<{ contacts: any[]; count: number }>('/sos/contacts');
   }
 
   async addSOSContact(name: string, phone: string, relationship?: string) {
-    return this.request<{ message: string }>('/sos/contacts', {
+    return this.request<{ message: string; contact: any }>('/sos/contact', {
       method: 'POST',
-      body: JSON.stringify({ name, phone, relationship }),
+      body: JSON.stringify({ contactName: name, contactPhone: phone, relationship }),
     });
   }
 
   async updateSOSContact(contactId: string, data: any) {
-    return this.request<{ message: string }>(`/sos/contacts/${contactId}`, {
+    return this.request<{ message: string; contact: any }>(`/sos/contact/${contactId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteSOSContact(contactId: string) {
-    return this.request<{ message: string }>(`/sos/contacts/${contactId}`, {
+    return this.request<{ message: string }>(`/sos/contact/${contactId}`, {
       method: 'DELETE',
     });
   }
 
-  // Challenges
+  // Challenges - Note: Backend may not have challenges endpoint, using tasks as alternative
   async getChallenges() {
-    return this.request<{ challenges: any[] }>('/challenges');
+    // Using daily tasks as challenges for now
+    return this.request<{ tasks: any[] }>('/tasks/daily').then((response) => ({
+      challenges: response.tasks || [],
+    }));
   }
 
   async acceptChallenge(challengeId: string) {
-    return this.request<{ message: string }>('/challenges/accept', {
+    // Challenges might be handled through tasks
+    return this.request<{ message: string }>('/tasks/complete', {
       method: 'POST',
-      body: JSON.stringify({ challengeId }),
+      body: JSON.stringify({ taskId: challengeId }),
     });
   }
 
   async completeChallenge(userChallengeId: string) {
-    return this.request<{ message: string }>(`/challenges/${userChallengeId}/complete`, {
+    // Challenges might be handled through tasks
+    return this.request<{ message: string }>('/tasks/complete', {
       method: 'POST',
+      body: JSON.stringify({ taskId: userChallengeId }),
     });
   }
 

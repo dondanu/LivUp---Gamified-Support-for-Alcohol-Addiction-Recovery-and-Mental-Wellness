@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { useNavigation } from '@react-navigation/native';
 import {
   Phone,
@@ -37,13 +37,10 @@ export default function SOSScreen() {
     if (!profile?.id) return;
 
     try {
-      const { data } = await supabase
-        .from('emergency_contacts')
-        .select('*')
-        .eq('user_id', profile.id)
-        .order('is_primary', { ascending: false });
-
-      if (data) setContacts(data);
+      const response = await api.getSOSContacts();
+      if (response.contacts) {
+        setContacts(response.contacts);
+      }
     } catch (error) {
       console.error('Error loading emergency contacts:', error);
     }
