@@ -85,7 +85,7 @@ android {
         versionCode 1
         versionName "1.0"
         ndk {
-            abiFilters "x86_64"  // Only build for emulator to speed up development. Change to "arm64-v8a" for physical device or add both for release builds
+            abiFilters "armeabi-v7a", "arm64-v8a", "x86_64"  // Support older devices (armeabi-v7a), modern devices (arm64-v8a), and emulator (x86_64)
         }
     }
     signingConfigs {

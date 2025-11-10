@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { MotivationalQuote, UserBadge, Badge, DrinkLog } from '@/types/database.types';
 import { Flame, Trophy, Zap, Award, Heart, AlertCircle, Activity, Target } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -26,36 +26,23 @@ export default function HomeScreen() {
 
   const loadData = async () => {
     try {
-      const { data: quotes } = await supabase
-        .from('motivational_quotes')
-        .select('*')
-        .eq('is_active', true)
-        .limit(50);
-
-      if (quotes && quotes.length > 0) {
-        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-        setQuote(randomQuote);
+      const quoteResponse = await api.getQuote();
+      if (quoteResponse.quote) {
+        setQuote(quoteResponse.quote);
       }
 
       if (profile?.id) {
-        const { data: badges } = await supabase
-          .from('user_badges')
-          .select('*, badges(*)')
-          .eq('user_id', profile.id)
-          .order('earned_at', { ascending: false })
-          .limit(3);
-
-        if (badges) {
-          setRecentBadges(badges);
+        const achievementsResponse = await api.getAchievements();
+        if (achievementsResponse.achievements && achievementsResponse.achievements.length > 0) {
+          const recent = achievementsResponse.achievements
+            .sort((a: any, b: any) => new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime())
+            .slice(0, 3);
+          setRecentBadges(recent);
         }
 
-        const { data: drinkLogs } = await supabase
-          .from('drink_logs')
-          .select('*')
-          .eq('user_id', profile.id)
-          .order('date', { ascending: false });
-
-        if (drinkLogs) {
+        const drinkLogsResponse = await api.getDrinkLogs();
+        if (drinkLogsResponse.logs) {
+          const drinkLogs = drinkLogsResponse.logs;
           let currentStreak = 0;
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -65,7 +52,7 @@ export default function HomeScreen() {
             checkDate.setDate(today.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
 
-            const log = drinkLogs.find((l) => l.date === dateString);
+            const log = drinkLogs.find((l: any) => l.date === dateString);
 
             if (!log || log.drinks_count === 0) {
               currentStreak++;
