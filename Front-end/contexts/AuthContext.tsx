@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '@/lib/api';
+import { register, login, getProfile, logout, tokenManager } from '@/src/api';
 import { Profile } from '@/types/database.types';
 
 interface User {
@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async () => {
     try {
-      const response = await api.getProfile();
+      const response = await getProfile();
       
       // Map backend response to frontend User type
       const userData: User = {
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => {
       try {
         // Check if we have a token first
-        const token = await AsyncStorage.getItem('@auth_token');
+        const token = await tokenManager.getToken();
         
         if (token) {
           // Only try to fetch profile if we have a token
@@ -97,12 +97,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, username?: string) => {
     try {
-      const response = await api.register(
-        username || email.split('@')[0],
+      const response = await register({
+        username: username || email.split('@')[0],
         password,
-      email,
-        false
-      );
+        email,
+        isAnonymous: false,
+      });
 
       // Set user from response
       setUser(response.user);
@@ -113,7 +113,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: null };
     } catch (error: any) {
       console.error('Sign up error:', error);
-      return { error: { message: error.message || 'Failed to sign up' } };
+      
+      // Extract error message from Axios error response
+      let errorMessage = 'Failed to sign up';
+      
+      // Handle validation errors with details array
+      if (error.response?.data?.details && Array.isArray(error.response.data.details)) {
+        // Get the first validation error message
+        const firstError = error.response.data.details[0];
+        errorMessage = firstError.msg || error.response.data.error || errorMessage;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return { error: { message: errorMessage } };
     }
   };
 
@@ -123,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If backend supports email login, use email; otherwise extract username
       const username = email.includes('@') ? email.split('@')[0] : email;
       
-      const response = await api.login(username, password);
+      const response = await login({ username, password });
 
       // Set user from response
       setUser(response.user);
@@ -134,20 +151,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: null };
     } catch (error: any) {
       console.error('Sign in error:', error);
-      return { error: { message: error.message || 'Failed to sign in' } };
+      
+      // Extract error message from Axios error response
+      let errorMessage = 'Failed to sign in';
+      
+      // Handle validation errors with details array
+      if (error.response?.data?.details && Array.isArray(error.response.data.details)) {
+        const firstError = error.response.data.details[0];
+        errorMessage = firstError.msg || error.response.data.error || errorMessage;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return { error: { message: errorMessage } };
     }
   };
 
   const signOut = async () => {
     try {
-      await api.logout();
+      await logout();
       setUser(null);
       setProfile(null);
     } catch (error) {
       console.error('Sign out error:', error);
       // Clear local state even if API call fails
       setUser(null);
-    setProfile(null);
+      setProfile(null);
     }
   };
 
@@ -155,12 +188,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Generate a random username for anonymous user
       const randomUsername = `anonymous_${Math.random().toString(36).substring(7)}`;
-      const response = await api.register(
-        randomUsername,
-        Math.random().toString(36),
-        undefined,
-        true
-      );
+      const response = await register({
+        username: randomUsername,
+        password: Math.random().toString(36),
+        isAnonymous: true,
+      });
 
       setUser(response.user);
       await fetchProfile();
@@ -168,7 +200,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: null };
     } catch (error: any) {
       console.error('Anonymous sign in error:', error);
-      return { error: { message: error.message || 'Failed to sign in anonymously' } };
+      
+      // Extract error message from Axios error response
+      let errorMessage = 'Failed to sign in anonymously';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return { error: { message: errorMessage } };
     }
   };
 

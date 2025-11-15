@@ -26,16 +26,36 @@ export default function RegisterScreen() {
   const { signUp } = useAuth();
 
   const handleRegister = async () => {
+    // Clear previous errors
+    setError('');
+
+    // Validate all fields are filled
     if (!email || !password || !username) {
       setError('Please fill in all fields');
       return;
     }
 
+    // Validate username (backend requires min 3 characters)
+    const trimmedUsername = username.trim();
+    if (trimmedUsername.length < 3) {
+      setError('Username must be at least 3 characters');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    // Validate password match
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
+    // Validate password length (backend requires min 6 characters)
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return;
@@ -44,16 +64,16 @@ export default function RegisterScreen() {
     setLoading(true);
     setError('');
 
-    const { error } = await signUp(email, password, username);
+    // Use trimmed username
+    const { error } = await signUp(email, password, trimmedUsername);
 
     if (error) {
       setError(error.message);
       setLoading(false);
     } else {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Tabs' as never }],
-      });
+      // Navigation will be handled automatically by RootNavigator
+      // based on auth state change, so we don't need to navigate manually
+      setLoading(false);
     }
   };
 
@@ -75,7 +95,7 @@ export default function RegisterScreen() {
             <View style={styles.form}>
               <TextInput
                 style={styles.input}
-                placeholder="Username"
+                placeholder="Username (min 3 characters)"
                 placeholderTextColor="#999"
                 value={username}
                 onChangeText={setUsername}
@@ -94,11 +114,12 @@ export default function RegisterScreen() {
 
               <TextInput
                 style={styles.input}
-                placeholder="Password"
+                placeholder="Password (min 6 characters)"
                 placeholderTextColor="#999"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                minLength={6}
               />
 
               <TextInput

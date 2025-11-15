@@ -30,9 +30,16 @@ export default function ChallengesScreen() {
     if (!profile?.id) return;
 
     try {
+      console.log('[Challenges] Loading challenges...');
       const challengesResponse = await api.getChallenges();
+      console.log('[Challenges] API Response:', challengesResponse);
+      
       if (challengesResponse.challenges) {
-        const activeChallenges = challengesResponse.challenges.filter((c: any) => c.is_active);
+        const activeChallenges = challengesResponse.challenges.filter((c: any) => {
+          // Filter out challenges that are explicitly inactive, but include all others
+          return c.is_active !== false;
+        });
+        console.log('[Challenges] Active challenges:', activeChallenges.length);
         setChallenges(activeChallenges);
         
         // Get user challenges from achievements or a separate endpoint
@@ -42,9 +49,13 @@ export default function ChallengesScreen() {
           // Map achievements to user challenges format if needed
           setUserChallenges([]);
         }
+      } else {
+        console.warn('[Challenges] No challenges in response:', challengesResponse);
+        setChallenges([]);
       }
     } catch (error) {
-      console.error('Error loading challenges:', error);
+      console.error('[Challenges] Error loading challenges:', error);
+      setChallenges([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -205,47 +216,54 @@ export default function ChallengesScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Available Challenges</Text>
-          {challenges
-            .filter((challenge) => !isChallengeAccepted(challenge.id))
-            .map((challenge) => (
-              <View key={challenge.id} style={styles.challengeCard}>
-                <View style={styles.challengeContent}>
-                  <View style={styles.challengeHeader}>
-                    <Text style={styles.challengeTitleDark}>{challenge.title}</Text>
-                    <View style={styles.pointsBadgeDark}>
-                      <Star size={16} color="#FFD700" />
-                      <Text style={styles.pointsTextDark}>{challenge.points_reward}</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.challengeDescriptionDark}>{challenge.description}</Text>
-
-                  <View style={styles.challengeFooter}>
-                    <View
-                      style={[
-                        styles.difficultyBadgeDark,
-                        {
-                          backgroundColor:
-                            challenge.difficulty === 'Easy'
-                              ? '#4ECDC4'
-                              : challenge.difficulty === 'Medium'
-                                ? '#F39C12'
-                                : '#E74C3C',
-                        },
-                      ]}>
-                      <Text style={styles.difficultyText}>{challenge.difficulty}</Text>
+          {challenges.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No challenges available at the moment.</Text>
+              <Text style={styles.emptySubtext}>Check back later for new challenges!</Text>
+            </View>
+          ) : (
+            challenges
+              .filter((challenge) => challenge.is_active !== false && !isChallengeAccepted(challenge.id))
+              .map((challenge) => (
+                <View key={challenge.id} style={styles.challengeCard}>
+                  <View style={styles.challengeContent}>
+                    <View style={styles.challengeHeader}>
+                      <Text style={styles.challengeTitleDark}>{challenge.title || challenge.task_name}</Text>
+                      <View style={styles.pointsBadgeDark}>
+                        <Star size={16} color="#FFD700" />
+                        <Text style={styles.pointsTextDark}>{challenge.points_reward}</Text>
+                      </View>
                     </View>
 
-                    <TouchableOpacity
-                      style={styles.acceptButton}
-                      onPress={() => acceptChallenge(challenge.id)}>
-                      <Target size={20} color="#FFFFFF" />
-                      <Text style={styles.acceptButtonText}>Accept</Text>
-                    </TouchableOpacity>
+                    <Text style={styles.challengeDescriptionDark}>{challenge.description}</Text>
+
+                    <View style={styles.challengeFooter}>
+                      <View
+                        style={[
+                          styles.difficultyBadgeDark,
+                          {
+                            backgroundColor:
+                              (challenge.difficulty || 'Easy') === 'Easy'
+                                ? '#4ECDC4'
+                                : (challenge.difficulty || 'Easy') === 'Medium'
+                                  ? '#F39C12'
+                                  : '#E74C3C',
+                          },
+                        ]}>
+                        <Text style={styles.difficultyText}>{challenge.difficulty || 'Easy'}</Text>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.acceptButton}
+                        onPress={() => acceptChallenge(challenge.id)}>
+                        <Target size={20} color="#FFFFFF" />
+                        <Text style={styles.acceptButtonText}>Accept</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              ))
+          )}
         </View>
       </ScrollView>
     </View>
@@ -450,5 +468,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginLeft: 6,
+  },
+  emptyState: {
+    backgroundColor: '#FFFFFF',
+    padding: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    textAlign: 'center',
   },
 });

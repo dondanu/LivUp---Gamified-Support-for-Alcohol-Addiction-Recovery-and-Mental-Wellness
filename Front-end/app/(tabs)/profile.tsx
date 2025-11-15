@@ -63,11 +63,17 @@ export default function ProfileScreen() {
       }
 
       const alternativesResponse = await api.getAlternatives();
-      if (alternativesResponse.alternatives) {
+      console.log('[Profile] Alternatives response:', alternativesResponse);
+      if (alternativesResponse && alternativesResponse.alternatives) {
+        console.log('[Profile] Found', alternativesResponse.alternatives.length, 'alternatives');
         setAlternatives(alternativesResponse.alternatives.slice(0, 20));
+      } else {
+        console.warn('[Profile] No alternatives in response:', alternativesResponse);
+        setAlternatives([]);
       }
     } catch (error) {
-      console.error('Error loading profile data:', error);
+      console.error('[Profile] Error loading profile data:', error);
+      setAlternatives([]);
     }
   };
 
@@ -344,19 +350,30 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView>
-              {alternatives.map((alternative) => (
-                <View key={alternative.id} style={styles.alternativeItem}>
-                  <Text style={styles.alternativeTitle}>{alternative.title}</Text>
-                  <Text style={styles.alternativeDescription}>{alternative.description}</Text>
-                  <View style={styles.alternativeFooter}>
-                    <Text style={styles.alternativeCategory}>{alternative.category}</Text>
-                    <Text style={styles.alternativeDuration}>
-                      {alternative.duration_minutes} min
+            <ScrollView 
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={true}
+            >
+              {alternatives.length === 0 ? (
+                <Text style={styles.emptyText}>No healthy alternatives available</Text>
+              ) : (
+                alternatives.map((alternative) => (
+                  <View key={alternative.id} style={styles.alternativeItem}>
+                    <Text style={styles.alternativeTitle}>
+                      {alternative.activity_name || alternative.title}
                     </Text>
+                    <Text style={styles.alternativeDescription}>
+                      {alternative.description || 'No description available'}
+                    </Text>
+                    <View style={styles.alternativeFooter}>
+                      <Text style={styles.alternativeCategory}>
+                        {alternative.category || 'General'}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
@@ -541,8 +558,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '80%',
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 0,
+    maxHeight: '90%',
+    minHeight: '60%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -556,7 +576,11 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
   },
   modalScroll: {
-    maxHeight: 400,
+    flex: 1,
+  },
+  modalScrollContent: {
+    paddingBottom: 24,
+    flexGrow: 1,
   },
   emptyText: {
     textAlign: 'center',

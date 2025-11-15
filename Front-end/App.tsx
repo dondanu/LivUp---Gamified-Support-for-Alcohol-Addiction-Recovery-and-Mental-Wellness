@@ -91,15 +91,17 @@ function AuthNavigator() {
 }
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return <IndexScreen />;
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {session ? (
+    <Stack.Navigator 
+      key={user ? 'authenticated' : 'unauthenticated'}
+      screenOptions={{ headerShown: false }}>
+      {user ? (
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
           <Stack.Screen name="SOS" component={SOSScreen} />

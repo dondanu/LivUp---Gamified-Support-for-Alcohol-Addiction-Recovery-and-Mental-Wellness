@@ -1,6 +1,35 @@
 // Backend API Configuration
 // Base URL for the backend API
-// Can be overridden with environment variable VITE_BASE_URL
-// Note: Remove trailing slash, endpoints will add their own leading slash
-export const BASE_URL = 'http://192.168.8.159:3000/api';
+// Uses environment variable API_BASE_URL from .env file
+// For Android Emulator: use http://10.0.2.2:3000/api
+// For iOS Simulator: use http://localhost:3000/api
+// For Physical Device: use your computer's IP address, e.g., http://192.168.1.168:3000/api
+
+import { Platform } from 'react-native';
+
+let Config: { API_BASE_URL?: string } = {};
+try {
+  Config = require('react-native-config').default || {};
+} catch (e) {
+  // react-native-config not available, use default
+}
+
+// Get base URL from environment variable, or use platform-specific default
+const getDefaultBaseURL = () => {
+  if (Platform.OS === 'android') {
+    // Android Emulator uses 10.0.2.2 to access host machine's localhost
+    return 'http://10.0.2.2:3000/api';
+  } else if (Platform.OS === 'ios') {
+    // iOS Simulator can use localhost
+    return 'http://localhost:3000/api';
+  } else {
+    // Default fallback (for physical devices, update this to your IP)
+    return 'http://192.168.1.168:3000/api';
+  }
+};
+
+export const BASE_URL = Config.API_BASE_URL || getDefaultBaseURL();
+
+// Log the base URL for debugging
+console.log(`[API Config] Platform: ${Platform.OS}, Base URL: ${BASE_URL}`);
 

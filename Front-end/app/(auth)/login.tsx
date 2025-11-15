@@ -38,10 +38,9 @@ export default function LoginScreen() {
       setError(error.message);
       setLoading(false);
     } else {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Tabs' as never }],
-      });
+      // Navigation will be handled automatically by RootNavigator
+      // based on auth state change, so we don't need to navigate manually
+      setLoading(false);
     }
   };
 
@@ -55,10 +54,9 @@ export default function LoginScreen() {
       setError(error.message);
       setLoading(false);
     } else {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Tabs' as never }],
-      });
+      // Navigation will be handled automatically by RootNavigator
+      // based on auth state change, so we don't need to navigate manually
+      setLoading(false);
     }
   };
 

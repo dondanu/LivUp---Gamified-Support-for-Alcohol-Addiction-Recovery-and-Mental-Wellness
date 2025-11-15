@@ -4,12 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Index() {
-  const { session, loading } = useAuth();
+  const { user, loading } = useAuth();
   const navigation = useNavigation<any>();
 
   useEffect(() => {
     if (!loading) {
-      if (session) {
+      if (user) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'Tabs' as never }],
@@ -21,7 +21,7 @@ export default function Index() {
         });
       }
     }
-  }, [session, loading, navigation]);
+  }, [user, loading, navigation]);
 
   return (
     <View style={styles.container}>
