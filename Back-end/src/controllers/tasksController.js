@@ -3,19 +3,60 @@ const { query, queryOne } = require('../config/database');
 const getDailyTasks = async (req, res) => {
   try {
     const { category, limit = 20 } = req.query;
-    let sql = 'SELECT * FROM daily_tasks WHERE is_active = 1';
+    // Get all tasks first, then filter in code to handle any is_active format
+    let sql = 'SELECT * FROM daily_tasks';
     const params = [];
 
     if (category) {
-      sql += ' AND category = ?';
+      sql += ' WHERE category = ?';
       params.push(category);
     }
 
-    sql += ' ORDER BY points_reward DESC LIMIT ?';
-    params.push(parseInt(limit));
+    const limitValue = parseInt(limit) || 100;
+    // Use template literal for LIMIT to avoid parameter binding issues
+    sql += ` ORDER BY points_reward DESC LIMIT ${limitValue}`;
 
-    const { data } = await query(sql, params);
-    res.status(200).json({ tasks: data || [], count: (data || []).length });
+    console.log(`[Tasks] Executing query: ${sql}`, `Params: [${params.join(', ')}]`);
+    const result = await query(sql, params);
+    const { data, error } = result;
+    
+    if (error) {
+      console.error('[Tasks] Query error:', error);
+      return res.status(500).json({ error: 'Database query failed', details: error.message });
+    }
+    
+    if (!data) {
+      console.error('[Tasks] Query returned null/undefined data');
+      return res.status(500).json({ error: 'Database query returned no data' });
+    }
+    
+    console.log(`[Tasks] Raw data from query: Array of ${data.length} items`);
+    if (data.length > 0) {
+      console.log(`[Tasks] First task sample:`, JSON.stringify(data[0], null, 2));
+    }
+    
+    // Filter active tasks in code (handle both 1/0, TRUE/FALSE, and NULL)
+    const activeTasks = (data || []).filter(task => {
+      const isActive = task.is_active;
+      const isActiveValue = isActive === 1 || isActive === true || isActive === '1' || isActive === 'TRUE' || isActive === null || isActive === undefined;
+      return isActiveValue;
+    });
+    
+    console.log(`[Tasks] Found ${activeTasks.length} active tasks from ${(data || []).length} total tasks`);
+    
+    // Map active tasks to challenges format for frontend compatibility
+    const tasks = activeTasks.map(task => ({
+      id: task.id.toString(),
+      title: task.task_name,
+      description: task.description,
+      points_reward: task.points_reward,
+      difficulty: task.difficulty || 'Easy',
+      category: task.category,
+      is_active: task.is_active,
+      created_at: task.created_at
+    }));
+    
+    res.status(200).json({ tasks, challenges: tasks, count: tasks.length });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }

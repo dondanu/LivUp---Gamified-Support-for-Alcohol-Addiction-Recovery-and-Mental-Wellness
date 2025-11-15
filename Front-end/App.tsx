@@ -16,6 +16,7 @@ import ProgressScreen from './app/(tabs)/progress';
 import ChallengesScreen from './app/(tabs)/challenges';
 import ProfileScreen from './app/(tabs)/profile';
 import SOSScreen from './app/sos';
+import ChallengeDetailScreen from './app/challenge-detail';
 import NotFoundScreen from './app/+not-found';
 import IndexScreen from './app/index';
 
@@ -105,6 +106,11 @@ function RootNavigator() {
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
           <Stack.Screen name="SOS" component={SOSScreen} />
+          <Stack.Screen 
+            name="ChallengeDetail" 
+            component={ChallengeDetailScreen}
+            options={{ headerShown: false }}
+          />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />

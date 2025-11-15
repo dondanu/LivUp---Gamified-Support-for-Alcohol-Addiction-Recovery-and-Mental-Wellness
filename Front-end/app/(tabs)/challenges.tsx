@@ -225,7 +225,10 @@ export default function ChallengesScreen() {
             challenges
               .filter((challenge) => challenge.is_active !== false && !isChallengeAccepted(challenge.id))
               .map((challenge) => (
-                <View key={challenge.id} style={styles.challengeCard}>
+                <TouchableOpacity
+                  key={challenge.id}
+                  style={styles.challengeCard}
+                  onPress={() => navigation.navigate('ChallengeDetail' as never, { challenge } as never)}>
                   <View style={styles.challengeContent}>
                     <View style={styles.challengeHeader}>
                       <Text style={styles.challengeTitleDark}>{challenge.title || challenge.task_name}</Text>
@@ -253,15 +256,13 @@ export default function ChallengesScreen() {
                         <Text style={styles.difficultyText}>{challenge.difficulty || 'Easy'}</Text>
                       </View>
 
-                      <TouchableOpacity
-                        style={styles.acceptButton}
-                        onPress={() => acceptChallenge(challenge.id)}>
+                      <View style={styles.acceptButton}>
                         <Target size={20} color="#FFFFFF" />
-                        <Text style={styles.acceptButtonText}>Accept</Text>
-                      </TouchableOpacity>
+                        <Text style={styles.acceptButtonText}>View Details</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))
           )}
         </View>
@@ -352,6 +353,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    // Make it clear it's tappable
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   challengeGradient: {
     padding: 20,

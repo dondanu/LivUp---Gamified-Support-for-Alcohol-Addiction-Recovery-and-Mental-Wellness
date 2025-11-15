@@ -26,7 +26,7 @@ const getMotivationalQuote = async (req, res) => {
 
 const getHealthyAlternatives = async (req, res) => {
   try {
-    const { category, limit = 10 } = req.query;
+    const { category, limit = 25 } = req.query;
     let sql = 'SELECT * FROM healthy_alternatives';
     const params = [];
 
@@ -35,12 +35,22 @@ const getHealthyAlternatives = async (req, res) => {
       params.push(category);
     }
 
-    sql += ' LIMIT ?';
-    params.push(parseInt(limit));
+    // Use template literal for LIMIT to avoid parameter binding issues
+    const limitValue = parseInt(limit) || 25;
+    sql += ` LIMIT ${limitValue}`;
 
-    const { data } = await query(sql, params);
+    console.log(`[Content] Fetching alternatives: ${sql}`);
+    const { data, error } = await query(sql, params);
+    
+    if (error) {
+      console.error('[Content] Error fetching alternatives:', error);
+      return res.status(500).json({ error: 'Server error', details: error.message });
+    }
+    
+    console.log(`[Content] Found ${(data || []).length} alternatives`);
     res.status(200).json({ alternatives: data || [], count: (data || []).length });
   } catch (error) {
+    console.error('[Content] Exception:', error);
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 };

@@ -31,6 +31,9 @@ async function initializeDatabase() {
     // Create all tables
     await createTables(connection);
     
+    // Run migrations for existing tables
+    await migrateTables(connection);
+    
     // Insert initial data
     await insertInitialData(connection);
     
@@ -41,6 +44,41 @@ async function initializeDatabase() {
     console.error('❌ Database initialization error:', error.message);
     if (connection) await connection.end();
     throw error;
+  }
+}
+
+async function migrateTables(connection) {
+  // Add difficulty column to daily_tasks if it doesn't exist
+  try {
+    const [columns] = await connection.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'daily_tasks' 
+      AND COLUMN_NAME = 'difficulty'
+    `);
+    
+    if (columns.length === 0) {
+      await connection.query(`
+        ALTER TABLE daily_tasks 
+        ADD COLUMN difficulty VARCHAR(20) DEFAULT 'Easy' AFTER category
+      `);
+      console.log('✅ Added difficulty column to daily_tasks');
+      
+      // Update existing tasks with default difficulty based on points
+      await connection.query(`
+        UPDATE daily_tasks 
+        SET difficulty = CASE 
+          WHEN points_reward <= 15 THEN 'Easy'
+          WHEN points_reward <= 30 THEN 'Medium'
+          ELSE 'Hard'
+        END
+        WHERE difficulty IS NULL OR difficulty = 'Easy'
+      `);
+      console.log('✅ Updated existing tasks with difficulty values');
+    }
+  } catch (error) {
+    console.warn('⚠️  Migration warning:', error.message);
   }
 }
 
@@ -182,6 +220,7 @@ async function createTables(connection) {
       task_name VARCHAR(100) NOT NULL,
       description TEXT,
       category VARCHAR(50),
+      difficulty VARCHAR(20) DEFAULT 'Easy',
       points_reward INT DEFAULT 10,
       is_active BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -244,65 +283,87 @@ async function createTables(connection) {
 }
 
 async function insertInitialData(connection) {
-  // Check if data already exists
+  // Check if levels exist
   const [levelRows] = await connection.query('SELECT COUNT(*) as count FROM levels');
-  if (levelRows[0].count > 0) {
-    console.log('ℹ️  Initial data already exists, skipping...');
-    return;
+  if (levelRows[0].count === 0) {
+    // Insert levels
+    await connection.query(`
+      INSERT INTO levels (level_name, points_required, avatar_unlock, description) VALUES
+      ('Beginner', 0, 'basic', 'Starting your journey'),
+      ('Apprentice', 100, 'apprentice', 'Making progress'),
+      ('Warrior', 300, 'warrior', 'Building strength'),
+      ('Champion', 600, 'champion', 'Showing dedication'),
+      ('Master', 1000, 'master', 'Achieving mastery'),
+      ('Legend', 2000, 'legend', 'Reaching legendary status'),
+      ('Phoenix', 5000, 'phoenix', 'Rising from the ashes')
+    `);
+    console.log('✅ Levels inserted');
+  } else {
+    console.log('ℹ️  Levels already exist, skipping...');
   }
 
-  // Insert levels
-  await connection.query(`
-    INSERT INTO levels (level_name, points_required, avatar_unlock, description) VALUES
-    ('Beginner', 0, 'basic', 'Starting your journey'),
-    ('Apprentice', 100, 'apprentice', 'Making progress'),
-    ('Warrior', 300, 'warrior', 'Building strength'),
-    ('Champion', 600, 'champion', 'Showing dedication'),
-    ('Master', 1000, 'master', 'Achieving mastery'),
-    ('Legend', 2000, 'legend', 'Reaching legendary status'),
-    ('Phoenix', 5000, 'phoenix', 'Rising from the ashes')
-  `);
+  // Check if achievements exist
+  const [achievementRows] = await connection.query('SELECT COUNT(*) as count FROM achievements');
+  if (achievementRows[0].count === 0) {
+    // Insert achievements
+    await connection.query(`
+      INSERT INTO achievements (achievement_name, description, points_reward, requirement_type, requirement_value, icon) VALUES
+      ('First Step', 'Complete your first day sober', 50, 'days_sober', 1, 'first-step'),
+      ('Week Warrior', 'Complete 7 days sober', 100, 'days_sober', 7, 'week-warrior'),
+      ('Monthly Champion', 'Complete 30 days sober', 500, 'days_sober', 30, 'monthly-champion'),
+      ('Streak Starter', 'Achieve a 3-day streak', 75, 'streak', 3, 'streak-starter'),
+      ('Streak Master', 'Achieve a 30-day streak', 300, 'streak', 30, 'streak-master'),
+      ('Task Master', 'Complete 10 tasks', 100, 'tasks_completed', 10, 'task-master'),
+      ('Hundred Hero', 'Reach 100 points', 50, 'points', 100, 'hundred-hero'),
+      ('Thousand Titan', 'Reach 1000 points', 500, 'points', 1000, 'thousand-titan'),
+      ('Zero Day Hero', 'Avoid drinking for 50 days', 400, 'drinks_avoided', 50, 'zero-hero')
+    `);
+    console.log('✅ Achievements inserted');
+  } else {
+    console.log('ℹ️  Achievements already exist, skipping...');
+  }
 
-  // Insert achievements
-  await connection.query(`
-    INSERT INTO achievements (achievement_name, description, points_reward, requirement_type, requirement_value, icon) VALUES
-    ('First Step', 'Complete your first day sober', 50, 'days_sober', 1, 'first-step'),
-    ('Week Warrior', 'Complete 7 days sober', 100, 'days_sober', 7, 'week-warrior'),
-    ('Monthly Champion', 'Complete 30 days sober', 500, 'days_sober', 30, 'monthly-champion'),
-    ('Streak Starter', 'Achieve a 3-day streak', 75, 'streak', 3, 'streak-starter'),
-    ('Streak Master', 'Achieve a 30-day streak', 300, 'streak', 30, 'streak-master'),
-    ('Task Master', 'Complete 10 tasks', 100, 'tasks_completed', 10, 'task-master'),
-    ('Hundred Hero', 'Reach 100 points', 50, 'points', 100, 'hundred-hero'),
-    ('Thousand Titan', 'Reach 1000 points', 500, 'points', 1000, 'thousand-titan'),
-    ('Zero Day Hero', 'Avoid drinking for 50 days', 400, 'drinks_avoided', 50, 'zero-hero')
+  // Check if daily tasks exist - IMPORTANT: Always check and insert if empty
+  const [taskRows] = await connection.query('SELECT COUNT(*) as count FROM daily_tasks');
+  if (taskRows[0].count === 0) {
+    // Insert daily tasks
+    await connection.query(`
+      INSERT INTO daily_tasks (task_name, description, category, difficulty, points_reward, is_active) VALUES
+    ('Morning Meditation', 'Start your day with 5 minutes of meditation', 'wellness', 'Easy', 15, TRUE),
+    ('Exercise', 'Do 30 minutes of physical activity', 'health', 'Medium', 20, TRUE),
+    ('Journal Entry', 'Write in your recovery journal', 'reflection', 'Easy', 10, TRUE),
+    ('Read Recovery Material', 'Read for 15 minutes about recovery', 'education', 'Easy', 15, TRUE),
+    ('Call Support', 'Reach out to a support person', 'social', 'Medium', 25, TRUE),
+    ('Healthy Meal', 'Prepare and eat a nutritious meal', 'health', 'Easy', 10, TRUE),
+    ('Gratitude List', 'Write down 3 things you''re grateful for', 'reflection', 'Easy', 10, TRUE),
+    ('Art/Creative Activity', 'Engage in creative expression', 'wellness', 'Easy', 15, TRUE),
+    ('Nature Walk', 'Spend 20 minutes outdoors', 'wellness', 'Easy', 15, TRUE),
+    ('Practice Mindfulness', 'Do a 10-minute mindfulness exercise', 'wellness', 'Easy', 15, TRUE),
+    ('Help Someone', 'Do something kind for another person', 'social', 'Medium', 20, TRUE),
+    ('Learn Something New', 'Watch a tutorial or read an article', 'education', 'Easy', 10, TRUE),
+    ('Music Therapy', 'Listen to uplifting music for 30 minutes', 'wellness', 'Easy', 10, TRUE),
+    ('Healthy Sleep', 'Get 7-8 hours of sleep', 'health', 'Medium', 15, TRUE),
+    ('No Social Media', 'Take a break from social media', 'wellness', 'Medium', 10, TRUE),
+    ('Stretch/Yoga', 'Do 15 minutes of stretching or yoga', 'health', 'Easy', 15, TRUE),
+    ('Cook a New Recipe', 'Try cooking something healthy', 'health', 'Medium', 15, TRUE),
+    ('Write Affirmations', 'Write 5 positive affirmations', 'reflection', 'Easy', 10, TRUE),
+    ('Listen to Podcast', 'Listen to a recovery or wellness podcast', 'education', 'Easy', 15, TRUE),
+    ('Deep Breathing', 'Practice 5 minutes of deep breathing', 'wellness', 'Easy', 10, TRUE),
+    ('Complete a 5K Run', 'Run or walk 5 kilometers', 'health', 'Hard', 50, TRUE),
+    ('Attend Support Group', 'Join a recovery support group meeting', 'social', 'Medium', 40, TRUE),
+    ('Week-Long Challenge', 'Complete 7 days of daily tasks', 'wellness', 'Hard', 100, TRUE),
+    ('Meditation Marathon', 'Meditate for 30 minutes straight', 'wellness', 'Hard', 45, TRUE),
+    ('Social Connection', 'Have a meaningful conversation with a friend', 'social', 'Easy', 20, TRUE)
   `);
+    console.log('✅ Daily tasks inserted');
+  } else {
+    console.log('ℹ️  Daily tasks already exist, skipping...');
+  }
 
-  // Insert daily tasks
-  await connection.query(`
-    INSERT INTO daily_tasks (task_name, description, category, points_reward) VALUES
-    ('Morning Meditation', 'Start your day with 5 minutes of meditation', 'wellness', 15),
-    ('Exercise', 'Do 30 minutes of physical activity', 'health', 20),
-    ('Journal Entry', 'Write in your recovery journal', 'reflection', 10),
-    ('Read Recovery Material', 'Read for 15 minutes about recovery', 'education', 15),
-    ('Call Support', 'Reach out to a support person', 'social', 25),
-    ('Healthy Meal', 'Prepare and eat a nutritious meal', 'health', 10),
-    ('Gratitude List', 'Write down 3 things you''re grateful for', 'reflection', 10),
-    ('Art/Creative Activity', 'Engage in creative expression', 'wellness', 15),
-    ('Nature Walk', 'Spend 20 minutes outdoors', 'wellness', 15),
-    ('Practice Mindfulness', 'Do a 10-minute mindfulness exercise', 'wellness', 15),
-    ('Help Someone', 'Do something kind for another person', 'social', 20),
-    ('Learn Something New', 'Watch a tutorial or read an article', 'education', 10),
-    ('Music Therapy', 'Listen to uplifting music for 30 minutes', 'wellness', 10),
-    ('Healthy Sleep', 'Get 7-8 hours of sleep', 'health', 15),
-    ('No Social Media', 'Take a break from social media', 'wellness', 10),
-    ('Stretch/Yoga', 'Do 15 minutes of stretching or yoga', 'health', 15),
-    ('Cook a New Recipe', 'Try cooking something healthy', 'health', 15),
-    ('Write Affirmations', 'Write 5 positive affirmations', 'reflection', 10),
-    ('Listen to Podcast', 'Listen to a recovery or wellness podcast', 'education', 15),
-    ('Deep Breathing', 'Practice 5 minutes of deep breathing', 'wellness', 10)
-  `);
-
-  // Insert motivational quotes
+  // Check if motivational quotes exist
+  const [quoteRows] = await connection.query('SELECT COUNT(*) as count FROM motivational_quotes');
+  if (quoteRows[0].count === 0) {
+    // Insert motivational quotes
   await connection.query(`
     INSERT INTO motivational_quotes (quote, author, category, is_active) VALUES
     ('Every day is a new beginning.', 'Anonymous', 'motivation', TRUE),
@@ -332,9 +393,17 @@ async function insertInitialData(connection) {
     ('Transform your pain into your power.', 'Anonymous', 'empowerment', TRUE)
   `);
 
-  // Insert healthy alternatives
-  await connection.query(`
-    INSERT INTO healthy_alternatives (activity_name, description, category) VALUES
+    console.log('✅ Motivational quotes inserted');
+  } else {
+    console.log('ℹ️  Motivational quotes already exist, skipping...');
+  }
+
+  // Check if healthy alternatives exist
+  const [alternativeRows] = await connection.query('SELECT COUNT(*) as count FROM healthy_alternatives');
+  if (alternativeRows[0].count === 0) {
+    // Insert healthy alternatives
+    await connection.query(`
+      INSERT INTO healthy_alternatives (activity_name, description, category) VALUES
     ('Go for a walk', 'Take a 20-minute walk in nature', 'physical'),
     ('Call a friend', 'Reach out to someone you care about', 'social'),
     ('Read a book', 'Get lost in a good book', 'mental'),
@@ -361,8 +430,12 @@ async function insertInitialData(connection) {
     ('Play board games', 'Have fun with games', 'social'),
     ('Stargazing', 'Look at the night sky', 'nature')
   `);
+    console.log('✅ Healthy alternatives inserted');
+  } else {
+    console.log('ℹ️  Healthy alternatives already exist, skipping...');
+  }
 
-  console.log('✅ Initial data inserted successfully');
+  console.log('✅ Initial data check complete');
 }
 
 // Run if called directly
