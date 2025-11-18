@@ -68,7 +68,7 @@ export default function LoginScreen() {
         <View style={styles.content}>
           <View style={styles.header}>
             <Heart size={64} color="#FFFFFF" strokeWidth={2} />
-            <Text style={styles.title}>SoberPath</Text>
+            <Text style={styles.title}>MindFusion</Text>
             <Text style={styles.subtitle}>Your Journey to Recovery Starts Here</Text>
           </View>
 

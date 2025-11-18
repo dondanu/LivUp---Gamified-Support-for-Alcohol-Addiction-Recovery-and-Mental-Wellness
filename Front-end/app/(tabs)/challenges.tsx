@@ -10,12 +10,14 @@ import {
   RefreshControl,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { Challenge, UserChallenge } from '@/types/database.types';
 import { Target, CheckCircle, Circle, Trophy, Star, Zap } from 'lucide-react-native';
 
 export default function ChallengesScreen() {
+  const navigation = useNavigation<any>();
   const { profile, refreshProfile } = useAuth();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
@@ -39,14 +41,43 @@ export default function ChallengesScreen() {
           // Filter out challenges that are explicitly inactive, but include all others
           return c.is_active !== false;
         });
-        console.log('[Challenges] Active challenges:', activeChallenges.length);
-        setChallenges(activeChallenges);
         
-        // Get user challenges from achievements or a separate endpoint
-        // For now, we'll use achievements as a proxy
-        const achievementsResponse = await api.getAchievements();
-        if (achievementsResponse.achievements) {
-          // Map achievements to user challenges format if needed
+        // Remove duplicates by title (keep first occurrence)
+        const uniqueChallenges = activeChallenges.reduce((acc: any[], challenge: any) => {
+          const title = challenge.title || challenge.task_name || '';
+          const exists = acc.find(c => (c.title || c.task_name || '') === title);
+          if (!exists) {
+            acc.push(challenge);
+          }
+          return acc;
+        }, []);
+        
+        console.log('[Challenges] Active challenges:', activeChallenges.length);
+        console.log('[Challenges] Unique challenges:', uniqueChallenges.length);
+        setChallenges(uniqueChallenges);
+        
+        // Get completed tasks to check which challenges are already done today
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          const completedResponse = await api.getCompletedTasks();
+          const completedToday = (completedResponse.tasks || []).filter(
+            (task: any) => task.completion_date === today
+          );
+          
+          // Map completed tasks to userChallenges format
+          const userChallengesList = completedToday.map((task: any) => ({
+            id: task.id?.toString() || '',
+            user_id: profile?.id || '',
+            challenge_id: task.task_id?.toString() || '',
+            status: 'completed',
+            completed_at: task.completion_date || new Date().toISOString(),
+            created_at: task.created_at || new Date().toISOString(),
+          }));
+          
+          setUserChallenges(userChallengesList);
+          console.log('[Challenges] Found', completedToday.length, 'completed challenges today');
+        } catch (error) {
+          console.error('[Challenges] Error loading completed tasks:', error);
           setUserChallenges([]);
         }
       } else {
@@ -133,6 +164,7 @@ export default function ChallengesScreen() {
 
       <ScrollView
         style={styles.content}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
@@ -223,15 +255,37 @@ export default function ChallengesScreen() {
             </View>
           ) : (
             challenges
-              .filter((challenge) => challenge.is_active !== false && !isChallengeAccepted(challenge.id))
-              .map((challenge) => (
+              .filter((challenge) => {
+                // Show all active challenges, even if completed
+                // We'll mark them as completed in the UI instead of hiding them
+                return challenge.is_active !== false;
+              })
+              .map((challenge) => {
+                const isCompleted = userChallenges.some(
+                  (uc) => uc.challenge_id === challenge.id && uc.status === 'completed'
+                );
+                return { challenge, isCompleted };
+              })
+              .map(({ challenge, isCompleted }) => (
                 <TouchableOpacity
                   key={challenge.id}
-                  style={styles.challengeCard}
-                  onPress={() => navigation.navigate('ChallengeDetail' as never, { challenge } as never)}>
+                  style={[styles.challengeCard, isCompleted && styles.challengeCardCompleted]}
+                  onPress={() => {
+                    navigation.navigate('ChallengeDetail' as never, { 
+                      challenge
+                    } as never);
+                  }}>
                   <View style={styles.challengeContent}>
+                    {isCompleted && (
+                      <View style={styles.completedBadge}>
+                        <CheckCircle size={16} color="#27AE60" />
+                        <Text style={styles.completedText}>Completed Today</Text>
+                      </View>
+                    )}
                     <View style={styles.challengeHeader}>
-                      <Text style={styles.challengeTitleDark}>{challenge.title || challenge.task_name}</Text>
+                      <Text style={[styles.challengeTitleDark, isCompleted && styles.challengeTitleCompleted]}>
+                        {challenge.title || challenge.task_name}
+                      </Text>
                       <View style={styles.pointsBadgeDark}>
                         <Star size={16} color="#FFD700" />
                         <Text style={styles.pointsTextDark}>{challenge.points_reward}</Text>
@@ -256,7 +310,7 @@ export default function ChallengesScreen() {
                         <Text style={styles.difficultyText}>{challenge.difficulty || 'Easy'}</Text>
                       </View>
 
-                      <View style={styles.acceptButton}>
+                      <View style={[styles.acceptButton, isCompleted && styles.acceptButtonCompleted]}>
                         <Target size={20} color="#FFFFFF" />
                         <Text style={styles.acceptButtonText}>View Details</Text>
                       </View>
@@ -300,16 +354,19 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
+    paddingBottom: 20,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
+    gap: 8,
   },
   statCard: {
     flex: 1,
-    marginHorizontal: 4,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -342,11 +399,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2C3E50',
     marginBottom: 16,
+    marginTop: 8,
   },
   challengeCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 12,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -357,17 +415,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+  challengeCardCompleted: {
+    backgroundColor: '#F0F9F4',
+    borderColor: '#27AE60',
+    borderWidth: 2,
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  completedText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#27AE60',
+    marginLeft: 6,
+  },
+  challengeTitleCompleted: {
+    opacity: 0.7,
+    textDecorationLine: 'line-through',
+  },
+  acceptButtonCompleted: {
+    backgroundColor: '#27AE60',
+  },
   challengeGradient: {
     padding: 20,
   },
   challengeContent: {
     width: '100%',
+    padding: 16,
   },
   challengeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   challengeTitle: {
     flex: 1,
@@ -422,12 +509,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#7F8C8D',
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 14,
+    marginTop: 4,
   },
   challengeFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 4,
   },
   difficultyBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.3)',

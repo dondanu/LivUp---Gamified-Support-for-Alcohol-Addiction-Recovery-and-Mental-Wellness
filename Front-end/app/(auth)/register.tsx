@@ -88,7 +88,7 @@ export default function RegisterScreen() {
           <View style={styles.content}>
             <View style={styles.header}>
               <UserPlus size={64} color="#FFFFFF" strokeWidth={2} />
-              <Text style={styles.title}>Join SoberPath</Text>
+              <Text style={styles.title}>Join MindFusion</Text>
               <Text style={styles.subtitle}>Start your recovery journey today</Text>
             </View>
 

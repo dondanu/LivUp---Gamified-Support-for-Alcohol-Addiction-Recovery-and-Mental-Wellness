@@ -51,16 +51,34 @@ export default function ProfileScreen() {
   const loadProfileData = async () => {
     if (!profile?.id) return;
 
+    // Mock data - show ONLY one badge (always use mock data)
+    const mockBadge: UserBadge = {
+      id: 'mock-badge-1',
+      user_id: profile.id,
+      badge_id: 'badge-1',
+      earned_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+      created_at: new Date().toISOString(),
+      badges: {
+        id: 'badge-1',
+        name: 'First Step',
+        description: 'Complete your first day sober',
+        icon: 'first-step',
+        requirement_type: 'days_sober',
+        requirement_value: 1,
+        created_at: new Date().toISOString(),
+      },
+    };
+    // Always set only one mock badge - don't load from API
+    setBadges([mockBadge]);
+
     try {
       const contactsResponse = await api.getSOSContacts();
       if (contactsResponse.contacts) {
         setContacts(contactsResponse.contacts);
       }
 
-      const achievementsResponse = await api.getAchievements();
-      if (achievementsResponse.achievements) {
-        setBadges(achievementsResponse.achievements);
-      }
+      // Don't load achievements from API - use mock data only
+      // const achievementsResponse = await api.getAchievements();
 
       const alternativesResponse = await api.getAlternatives();
       console.log('[Profile] Alternatives response:', alternativesResponse);
@@ -262,20 +280,28 @@ export default function ProfileScreen() {
                 <Text style={styles.emptyText}>No badges earned yet. Keep going!</Text>
               ) : (
                 <View style={styles.badgesGrid}>
-                  {badges.map((userBadge) => (
-                    <View key={userBadge.id} style={styles.badgeItem}>
-                      <View style={styles.badgeIcon}>
-                        <Award size={32} color="#FFD700" />
+                  {badges.slice(0, 1).map((userBadge) => {
+                    // Get badge data - handle both API response format and mock data format
+                    const badgeData = userBadge.badges || userBadge;
+                    const badgeName = badgeData.name || 'First Step';
+                    const badgeDescription = badgeData.description || 'Complete your first day sober';
+                    const earnedDate = userBadge.earned_at 
+                      ? new Date(userBadge.earned_at).toLocaleDateString() 
+                      : new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toLocaleDateString();
+                    
+                    return (
+                      <View key={userBadge.id || 'mock-badge-1'} style={styles.badgeItem}>
+                        <View style={styles.badgeIcon}>
+                          <Award size={32} color="#FFD700" />
+                        </View>
+                        <Text style={styles.badgeName}>{badgeName}</Text>
+                        <Text style={styles.badgeDescription} numberOfLines={2}>
+                          {badgeDescription}
+                        </Text>
+                        <Text style={styles.badgeDate}>{earnedDate}</Text>
                       </View>
-                      <Text style={styles.badgeName}>{userBadge.badges?.name}</Text>
-                      <Text style={styles.badgeDescription} numberOfLines={2}>
-                        {userBadge.badges?.description}
-                      </Text>
-                      <Text style={styles.badgeDate}>
-                        {new Date(userBadge.earned_at).toLocaleDateString()}
-                      </Text>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </ScrollView>

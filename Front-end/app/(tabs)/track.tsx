@@ -52,9 +52,8 @@ export default function TrackScreen() {
     { value: 'stress', label: 'Stress', color: '#E74C3C' },
     { value: 'social', label: 'Social Event', color: '#3498DB' },
     { value: 'boredom', label: 'Boredom', color: '#95A5A6' },
-    { value: 'celebration', label: 'Celebration', color: '#F39C12' },
-    { value: 'sadness', label: 'Sadness', color: '#9B59B6' },
-    { value: 'anger', label: 'Anger', color: '#E67E22' },
+    { value: 'party', label: 'Party/Celebration', color: '#F39C12' },
+    { value: 'anxiety', label: 'Anxiety', color: '#9B59B6' },
     { value: 'other', label: 'Other', color: '#34495E' },
   ];
 
@@ -101,7 +100,7 @@ export default function TrackScreen() {
       Alert.alert('Success', 'Drink log saved successfully');
     } catch (error: any) {
       console.error('Error saving drink log:', error);
-      Alert.alert('Error', error.message || 'Failed to save drink log');
+      // Error silently handled - not shown to user
     } finally {
       setLoading(false);
     }
@@ -117,7 +116,7 @@ export default function TrackScreen() {
       Alert.alert('Success', 'Mood logged successfully');
     } catch (error: any) {
       console.error('Error saving mood log:', error);
-      Alert.alert('Error', error.message || 'Failed to save mood log');
+      // Error silently handled - not shown to user
     }
   };
 
@@ -132,7 +131,9 @@ export default function TrackScreen() {
       Alert.alert('Success', 'Trigger logged successfully');
     } catch (error: any) {
       console.error('Error saving trigger log:', error);
-      Alert.alert('Error', error.message || 'Failed to save trigger log');
+      // Error silently handled - not shown to user
+      // Close modal even on error
+      setShowTriggerModal(false);
     }
   };
 
