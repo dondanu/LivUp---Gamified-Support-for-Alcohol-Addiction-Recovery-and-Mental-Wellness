@@ -1,5 +1,6 @@
 export interface Profile {
   id: string;
+  user_id?: string;
   username: string | null;
   avatar_level: number;
   is_anonymous: boolean;

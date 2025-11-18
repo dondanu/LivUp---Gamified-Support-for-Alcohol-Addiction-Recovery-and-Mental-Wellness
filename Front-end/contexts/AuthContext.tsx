@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Map backend profile to frontend Profile type
       const profileData: Profile = {
         id: response.profile.id,
+        user_id: response.profile.user_id,
         username: response.user.username,
         avatar_level: response.profile.avatar_type ? parseInt(response.profile.avatar_type) || 1 : 1,
         is_anonymous: response.user.is_anonymous,

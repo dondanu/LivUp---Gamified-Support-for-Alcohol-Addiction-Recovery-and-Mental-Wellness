@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { MotivationalQuote, UserBadge, Badge, DrinkLog } from '@/types/database.types';
 import { Flame, Trophy, Zap, Award, Heart, AlertCircle, Activity, Target } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 export default function HomeScreen() {
   const { profile, refreshProfile } = useAuth();
@@ -23,6 +23,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [soberDays, setSoberDays] = useState(0);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [todayPoints, setTodayPoints] = useState(0);
 
   const loadData = async () => {
     try {
@@ -45,6 +47,16 @@ export default function HomeScreen() {
         } catch (error) {
           console.error('Error fetching achievements:', error);
           setRecentBadges([]);
+        }
+
+        let todaysPoints = 0;
+        try {
+          const todayTasksResponse = await api.getTodayTasks();
+          todaysPoints = todayTasksResponse.totalPointsEarnedToday || 0;
+          setTodayPoints(todaysPoints);
+        } catch (pointsError) {
+          console.error('Error loading today points:', pointsError);
+          setTodayPoints(0);
         }
 
         const drinkLogsResponse = await api.getDrinkLogs();
@@ -70,6 +82,19 @@ export default function HomeScreen() {
 
           setSoberDays(currentStreak);
         }
+
+        // Load total points from gamification profile as single source of truth
+        try {
+          const gamificationResponse = await api.getGamificationProfile();
+          if (gamificationResponse?.profile?.total_points !== undefined) {
+            setTotalPoints(gamificationResponse.profile.total_points || (todaysPoints || profile.total_points || 0));
+          } else {
+            setTotalPoints(profile.total_points || todaysPoints || 0);
+          }
+        } catch (pointsError) {
+          console.error('Error loading total points:', pointsError);
+          setTotalPoints(profile.total_points || todaysPoints || 0);
+        }
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -82,6 +107,12 @@ export default function HomeScreen() {
   useEffect(() => {
     loadData();
   }, [profile]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshProfile();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -130,8 +161,8 @@ export default function HomeScreen() {
           <View style={styles.statCard}>
             <LinearGradient colors={['#4ECDC4', '#44A08D']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
               <Zap size={32} color="#FFFFFF" />
-              <Text style={styles.statValue}>{profile?.total_points || 0}</Text>
-              <Text style={styles.statLabel}>Points</Text>
+              <Text style={styles.statValue}>{totalPoints}</Text>
+              <Text style={styles.statLabel}>Total Points</Text>
             </LinearGradient>
           </View>
 

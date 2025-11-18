@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { Challenge, UserChallenge } from '@/types/database.types';
@@ -22,11 +22,18 @@ export default function ChallengesScreen() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [todayPoints, setTodayPoints] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadChallenges();
   }, [profile]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadChallenges();
+    }, [profile])
+  );
 
   const loadChallenges = async () => {
     if (!profile?.id) return;
@@ -56,15 +63,11 @@ export default function ChallengesScreen() {
         console.log('[Challenges] Unique challenges:', uniqueChallenges.length);
         setChallenges(uniqueChallenges);
         
-        // Get completed tasks to check which challenges are already done today
+        // Get today's progress to determine completed/in-progress challenges
         try {
-          const today = new Date().toISOString().split('T')[0];
-          const completedResponse = await api.getCompletedTasks();
-          const completedToday = (completedResponse.tasks || []).filter(
-            (task: any) => task.completion_date === today
-          );
-          
-          // Map completed tasks to userChallenges format
+          const todayResponse = await api.getTodayTasks();
+          const completedToday = todayResponse.completedTasks || [];
+
           const userChallengesList = completedToday.map((task: any) => ({
             id: task.id?.toString() || '',
             user_id: profile?.id || '',
@@ -72,13 +75,22 @@ export default function ChallengesScreen() {
             status: 'completed',
             completed_at: task.completion_date || new Date().toISOString(),
             created_at: task.created_at || new Date().toISOString(),
+            challenges: {
+              id: task.task_id?.toString() || '',
+              title: task.task_name || task.title,
+              description: task.description,
+              difficulty: task.difficulty || 'Easy',
+              points_reward: task.points_reward || task.points || 0,
+            },
           }));
-          
+
           setUserChallenges(userChallengesList);
-          console.log('[Challenges] Found', completedToday.length, 'completed challenges today');
+          setTodayPoints(todayResponse.totalPointsEarnedToday || 0);
+          console.log('[Challenges] Today completed:', completedToday.length);
         } catch (error) {
-          console.error('[Challenges] Error loading completed tasks:', error);
+          console.error('[Challenges] Error loading today\'s tasks:', error);
           setUserChallenges([]);
+          setTodayPoints(0);
         }
       } else {
         console.warn('[Challenges] No challenges in response:', challengesResponse);
@@ -186,7 +198,7 @@ export default function ChallengesScreen() {
           <View style={styles.statCard}>
             <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
               <Trophy size={28} color="#FFFFFF" />
-              <Text style={styles.statValue}>{profile?.total_points || 0}</Text>
+              <Text style={styles.statValue}>{todayPoints}</Text>
               <Text style={styles.statLabel}>Total Points</Text>
             </LinearGradient>
           </View>
@@ -270,7 +282,15 @@ export default function ChallengesScreen() {
                 <TouchableOpacity
                   key={challenge.id}
                   style={[styles.challengeCard, isCompleted && styles.challengeCardCompleted]}
+                  activeOpacity={isCompleted ? 1 : 0.7}
                   onPress={() => {
+                    if (isCompleted) {
+                      Alert.alert(
+                        'Come Back Tomorrow',
+                        'You have already completed this challenge today. New challenges unlock every day!'
+                      );
+                      return;
+                    }
                     navigation.navigate('ChallengeDetail' as never, { 
                       challenge
                     } as never);
@@ -292,7 +312,9 @@ export default function ChallengesScreen() {
                       </View>
                     </View>
 
-                    <Text style={styles.challengeDescriptionDark}>{challenge.description}</Text>
+                    <Text style={[styles.challengeDescriptionDark, isCompleted && styles.challengeDescriptionDisabled]}>
+                      {challenge.description}
+                    </Text>
 
                     <View style={styles.challengeFooter}>
                       <View
@@ -312,7 +334,9 @@ export default function ChallengesScreen() {
 
                       <View style={[styles.acceptButton, isCompleted && styles.acceptButtonCompleted]}>
                         <Target size={20} color="#FFFFFF" />
-                        <Text style={styles.acceptButtonText}>View Details</Text>
+                        <Text style={styles.acceptButtonText}>
+                          {isCompleted ? 'Completed' : 'View Details'}
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -511,6 +535,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 14,
     marginTop: 4,
+  },
+  challengeDescriptionDisabled: {
+    color: '#9EA7AC',
   },
   challengeFooter: {
     flexDirection: 'row',
