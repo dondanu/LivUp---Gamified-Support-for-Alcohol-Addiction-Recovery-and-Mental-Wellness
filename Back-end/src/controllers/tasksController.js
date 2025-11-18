@@ -45,7 +45,17 @@ const getDailyTasks = async (req, res) => {
     console.log(`[Tasks] Found ${activeTasks.length} active tasks from ${(data || []).length} total tasks`);
     
     // Map active tasks to challenges format for frontend compatibility
-    const tasks = activeTasks.map(task => ({
+    // Remove duplicates by task_name (keep the one with highest points or first occurrence)
+    const taskMap = new Map();
+    activeTasks.forEach(task => {
+      const title = task.task_name;
+      if (!taskMap.has(title) || (taskMap.get(title).points_reward || 0) < (task.points_reward || 0)) {
+        taskMap.set(title, task);
+      }
+    });
+    
+    const uniqueTasks = Array.from(taskMap.values());
+    const tasks = uniqueTasks.map(task => ({
       id: task.id.toString(),
       title: task.task_name,
       description: task.description,
@@ -56,6 +66,7 @@ const getDailyTasks = async (req, res) => {
       created_at: task.created_at
     }));
     
+    console.log(`[Tasks] Returning ${tasks.length} unique challenges`);
     res.status(200).json({ tasks, challenges: tasks, count: tasks.length });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
