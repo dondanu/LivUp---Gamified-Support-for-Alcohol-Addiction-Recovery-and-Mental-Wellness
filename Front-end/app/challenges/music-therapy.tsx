@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -29,8 +29,11 @@ export default function MusicTherapyChallenge() {
   const [loading, setLoading] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [audioError, setAudioError] = useState(false);
+  const autoCompletionRef = useRef(false);
   
-  const targetDuration = 30 * 60; // 30 minutes in seconds
+  // Timing configuration
+  const targetDuration = 1 * 60; // 1 minute in seconds
+  const MIN_COMPLETION_SECONDS = 1 * 60; // Require at least 1 minute to complete
   const progress = Math.min((timeElapsed / targetDuration) * 100, 100);
   
   useEffect(() => {
@@ -43,6 +46,11 @@ export default function MusicTherapyChallenge() {
           if (newTime >= targetDuration) {
             setIsPlaying(false);
             setIsCompleted(true);
+            stopMusic();
+            if (!autoCompletionRef.current) {
+              autoCompletionRef.current = true;
+              handleCompleteChallenge(true);
+            }
             return targetDuration;
           }
           return newTime;
@@ -58,6 +66,15 @@ export default function MusicTherapyChallenge() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const stopMusic = () => {
+    try {
+      SoundPlayer.stop();
+      setMusicPlaying(false);
+    } catch (error) {
+      // Ignore stop errors
+    }
   };
 
   // Try to play music in-app
@@ -257,17 +274,17 @@ export default function MusicTherapyChallenge() {
     };
   }, []);
 
-  const handleCompleteChallenge = async () => {
+  const handleCompleteChallenge = async (isAutoComplete = false) => {
     if (!profile?.id || !challenge?.id) {
       Alert.alert('Error', 'Unable to complete challenge. Please try again.');
       return;
     }
 
-    // Check if they've listened for at least 5 minutes (300 seconds)
-    if (timeElapsed < 300) {
+    // Check if they've listened for at least the minimum required time
+    if (!isAutoComplete && timeElapsed < MIN_COMPLETION_SECONDS) {
       Alert.alert(
         'Not Enough Time',
-        'Please listen to music for at least 5 minutes before completing this challenge.',
+        'Please listen to music for at least 1 minute before completing this challenge.',
         [{ text: 'OK' }]
       );
       return;
@@ -325,7 +342,7 @@ export default function MusicTherapyChallenge() {
         <View style={styles.headerContent}>
           <Music size={48} color="#FFFFFF" />
           <Text style={styles.headerTitle}>{title}</Text>
-          <Text style={styles.headerSubtitle}>Listen to uplifting music for 30 minutes</Text>
+          <Text style={styles.headerSubtitle}>Listen to uplifting music for 1 minute</Text>
         </View>
       </LinearGradient>
 
@@ -337,7 +354,7 @@ export default function MusicTherapyChallenge() {
           </View>
           <View style={styles.pointsRow}>
             <Text style={styles.infoLabel}>Target Duration:</Text>
-            <Text style={styles.infoValue}>30 minutes</Text>
+            <Text style={styles.infoValue}>1 minute</Text>
           </View>
         </View>
 
@@ -403,8 +420,8 @@ export default function MusicTherapyChallenge() {
             1. Press "Start Listening" to begin the timer{'\n'}
             2. Open your music app (Spotify, Apple Music, etc.){'\n'}
             3. Play uplifting music from your playlist{'\n'}
-            4. Listen for at least 5 minutes (30 minutes recommended){'\n'}
-            5. Press "Complete Challenge" when finished
+            4. Listen for at least 1 minute{'\n'}
+            5. The challenge completes automatically and awards your points once time is reached
           </Text>
           
           {!isPlaying && (
@@ -444,10 +461,10 @@ export default function MusicTherapyChallenge() {
         <TouchableOpacity
           style={[
             styles.completeButton,
-            (loading || isCompleted || timeElapsed < 300) && styles.completeButtonDisabled,
+            (loading || isCompleted || timeElapsed < MIN_COMPLETION_SECONDS) && styles.completeButtonDisabled,
           ]}
-          onPress={handleCompleteChallenge}
-          disabled={loading || isCompleted || timeElapsed < 300}>
+          onPress={() => handleCompleteChallenge()}
+          disabled={loading || isCompleted || timeElapsed < MIN_COMPLETION_SECONDS}>
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : isCompleted ? (
@@ -459,8 +476,8 @@ export default function MusicTherapyChallenge() {
             <>
               <CheckCircle size={24} color="#FFFFFF" />
               <Text style={styles.completeButtonText}>
-                {timeElapsed < 300
-                  ? `Listen for ${Math.ceil((300 - timeElapsed) / 60)} more minutes`
+                {timeElapsed < MIN_COMPLETION_SECONDS
+                  ? `Listen for ${Math.max(1, Math.ceil((MIN_COMPLETION_SECONDS - timeElapsed) / 60))} more minute${Math.ceil((MIN_COMPLETION_SECONDS - timeElapsed) / 60) > 1 ? 's' : ''}`
                   : 'Complete Challenge'}
               </Text>
             </>
