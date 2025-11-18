@@ -32,60 +32,6 @@ export default function HomeScreen() {
       }
 
       if (profile?.id) {
-        // Mock data for recent achievements - always show for demo
-        const mockAchievements: UserBadge[] = [
-          {
-            id: 'mock-1',
-            user_id: profile.id,
-            badge_id: 'badge-1',
-            earned_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-            created_at: new Date().toISOString(),
-            badges: {
-              id: 'badge-1',
-              name: 'First Step',
-              description: 'Complete your first day sober',
-              icon: 'first-step',
-              requirement_type: 'days_sober',
-              requirement_value: 1,
-              created_at: new Date().toISOString(),
-            },
-          },
-          {
-            id: 'mock-2',
-            user_id: profile.id,
-            badge_id: 'badge-2',
-            earned_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            created_at: new Date().toISOString(),
-            badges: {
-              id: 'badge-2',
-              name: 'Mood Tracker',
-              description: 'Log your mood for 5 days',
-              icon: 'mood-tracker',
-              requirement_type: 'mood_logs',
-              requirement_value: 5,
-              created_at: new Date().toISOString(),
-            },
-          },
-          {
-            id: 'mock-3',
-            user_id: profile.id,
-            badge_id: 'badge-3',
-            earned_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            created_at: new Date().toISOString(),
-            badges: {
-              id: 'badge-3',
-              name: 'Week Warrior',
-              description: 'Complete 7 days sober',
-              icon: 'week-warrior',
-              requirement_type: 'days_sober',
-              requirement_value: 7,
-              created_at: new Date().toISOString(),
-            },
-          },
-        ];
-        setRecentBadges(mockAchievements);
-
-        // Try to load real achievements, but keep mock data as fallback
         try {
           const achievementsResponse = await api.getAchievements();
           if (achievementsResponse.achievements && achievementsResponse.achievements.length > 0) {
@@ -93,9 +39,12 @@ export default function HomeScreen() {
               .sort((a: any, b: any) => new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime())
               .slice(0, 3);
             setRecentBadges(recent);
+          } else {
+            setRecentBadges([]);
           }
         } catch (error) {
-          console.log('Using mock achievements data');
+          console.error('Error fetching achievements:', error);
+          setRecentBadges([]);
         }
 
         const drinkLogsResponse = await api.getDrinkLogs();
@@ -219,60 +168,30 @@ export default function HomeScreen() {
           <View style={styles.badgesContainer}>
             {recentBadges.length > 0 ? (
               recentBadges.map((userBadge, index) => {
-                // Get achievement data - handle both API response format and mock data format
                 const badgeData = userBadge.badges || userBadge;
                 const achievementNames = ['First Step', 'Mood Tracker', 'Week Warrior'];
                 const achievementDescriptions = [
                   'Complete your first day sober',
-                  'Log your mood for 5 days',
-                  'Complete 7 days sober'
+                  'Reach 100 points',
+                  'Achieve a 3-day streak'
                 ];
+                const badgeName = badgeData.name || badgeData.achievement_name || achievementNames[index] || 'Achievement';
+                const badgeDescription = badgeData.description || achievementDescriptions[index] || 'Keep up the progress!';
                 
                 return (
                   <View key={userBadge.id || `badge-${index}`} style={styles.badgeCard}>
                     <View style={styles.badgeIconContainer}>
                       <Award size={32} color="#FFD700" />
                     </View>
-                    <Text style={styles.badgeName}>
-                      {badgeData.name || achievementNames[index] || 'Achievement'}
-                    </Text>
+                    <Text style={styles.badgeName}>{badgeName}</Text>
                     <Text style={styles.badgeDescription} numberOfLines={2}>
-                      {badgeData.description || achievementDescriptions[index] || 'Great progress!'}
+                      {badgeDescription}
                     </Text>
                   </View>
                 );
               })
             ) : (
-              // Fallback if no badges loaded yet
-              <>
-                <View style={styles.badgeCard}>
-                  <View style={styles.badgeIconContainer}>
-                    <Award size={32} color="#FFD700" />
-                  </View>
-                  <Text style={styles.badgeName}>First Step</Text>
-                  <Text style={styles.badgeDescription} numberOfLines={2}>
-                    Complete your first day sober
-                  </Text>
-                </View>
-                <View style={styles.badgeCard}>
-                  <View style={styles.badgeIconContainer}>
-                    <Award size={32} color="#FFD700" />
-                  </View>
-                  <Text style={styles.badgeName}>Mood Tracker</Text>
-                  <Text style={styles.badgeDescription} numberOfLines={2}>
-                    Log your mood for 5 days
-                  </Text>
-                </View>
-                <View style={styles.badgeCard}>
-                  <View style={styles.badgeIconContainer}>
-                    <Award size={32} color="#FFD700" />
-                  </View>
-                  <Text style={styles.badgeName}>Week Warrior</Text>
-                  <Text style={styles.badgeDescription} numberOfLines={2}>
-                    Complete 7 days sober
-                  </Text>
-                </View>
-              </>
+              <Text style={styles.badgesEmptyText}>No achievements yet. Complete tasks to earn badges.</Text>
             )}
           </View>
         </View>
@@ -462,6 +381,13 @@ const styles = StyleSheet.create({
   badgesContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  badgesEmptyText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    flex: 1,
+    paddingVertical: 16,
   },
   badgeCard: {
     flex: 1,
