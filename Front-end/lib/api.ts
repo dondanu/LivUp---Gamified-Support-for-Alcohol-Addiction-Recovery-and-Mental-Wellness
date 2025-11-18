@@ -79,7 +79,8 @@ export const api = {
 
   // Challenges (using tasks)
   getChallenges: async () => {
-    const response = await apiExports.getDailyTasks();
+    // Request more challenges to ensure we get all 25
+    const response = await apiExports.getDailyTasks({ limit: 50 });
     // Backend now returns both tasks and challenges, prefer challenges if available
     return { challenges: response.challenges || response.tasks || [] };
   },
