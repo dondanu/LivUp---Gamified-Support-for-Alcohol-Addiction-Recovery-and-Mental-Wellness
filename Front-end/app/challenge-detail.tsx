@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,19 +12,56 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import { ArrowLeft, Target, Star, Zap, Award, Play } from 'lucide-react-native';
+import { ArrowLeft, Target, Star, Zap, Award, Play, Clock, CheckCircle } from 'lucide-react-native';
 import { Challenge } from '@/types/database.types';
+import { getChallengeByTitle, getChallengeById, getChallengeIdFromTitle, ChallengeConfig } from '@/config/challenges';
 
 export default function ChallengeDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
   
   // Get challenge from route params
   const challenge = route.params?.challenge as Challenge;
+  
+  // Get challenge-specific config by matching title to ID
+  const challengeTitle = challenge?.title || challenge?.task_name || '';
+  const challengeId = challengeTitle ? getChallengeIdFromTitle(challengeTitle) : undefined;
+  const challengeConfig: ChallengeConfig | undefined = challengeId 
+    ? getChallengeById(challengeId)
+    : challengeTitle
+      ? getChallengeByTitle(challengeTitle)
+      : undefined;
 
-  if (!challenge) {
+  // Check if challenge is already completed today
+  useEffect(() => {
+    const checkCompletionStatus = async () => {
+      if (!profile?.id || !challenge?.id) {
+        setCheckingStatus(false);
+        return;
+      }
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const completedResponse = await api.getCompletedTasks();
+        const completedToday = completedResponse.tasks?.some(
+          (task: any) => task.task_id === parseInt(challenge.id) && task.completion_date === today
+        );
+        setIsCompleted(completedToday || false);
+      } catch (error) {
+        console.error('Error checking completion status:', error);
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkCompletionStatus();
+  }, [profile, challenge]);
+
+  if (!challenge && !challengeConfig) {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>Challenge not found</Text>
@@ -35,8 +72,16 @@ export default function ChallengeDetailScreen() {
     );
   }
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty?.toLowerCase()) {
+  // Use config data if available, otherwise fall back to API challenge data
+  const displayChallenge = challengeConfig || challenge;
+  const title = challengeConfig?.title || challenge?.title || challenge?.task_name || 'Challenge';
+  const description = challengeConfig?.description || challenge?.description || '';
+  const difficulty = challengeConfig?.difficulty || challenge?.difficulty || 'Easy';
+  const points = challengeConfig?.points || challenge?.points_reward || 0;
+  const challengeApiId = challenge?.id || challengeId;
+
+  const getDifficultyColor = (diff: string) => {
+    switch (diff?.toLowerCase()) {
       case 'easy':
         return ['#4ECDC4', '#44A08D'];
       case 'medium':
@@ -48,37 +93,41 @@ export default function ChallengeDetailScreen() {
     }
   };
 
-  const handleStartChallenge = async () => {
-    if (!profile?.id) return;
-
-    setLoading(true);
-    try {
-      await api.acceptChallenge(challenge.id);
+  const handleStartChallenge = () => {
+    // Check if this is Music Therapy challenge
+    const challengeId = challengeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    
+    if (challengeId === 'music-therapy' || challengeId === 'music therapy') {
+      // Navigate to Music Therapy activity page
+      navigation.navigate('MusicTherapyChallenge' as never, { challenge } as never);
+    } else {
+      // For other challenges, show instructions and allow completion
       Alert.alert(
-        'Challenge Started! 🎉',
-        `You've accepted "${challenge.title}". Complete it to earn ${challenge.points_reward} points!`,
+        'Start Challenge',
+        `Ready to start "${title}"? Follow the instructions and complete the challenge to earn ${points} points!`,
         [
+          { text: 'Cancel', style: 'cancel' },
           {
-            text: 'OK',
+            text: 'Start',
             onPress: () => {
-              refreshProfile();
-              navigation.goBack();
+              // For now, navigate to a generic activity page or show completion button
+              // We'll implement specific pages for other challenges later
+              Alert.alert(
+                'Challenge Started',
+                'Follow the instructions above to complete this challenge. When finished, you can mark it as complete.',
+                [{ text: 'OK' }]
+              );
             },
           },
         ]
       );
-    } catch (error: any) {
-      console.error('Error starting challenge:', error);
-      Alert.alert('Error', error.message || 'Failed to start challenge');
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={getDifficultyColor(challenge.difficulty || 'Easy') as [string, string]}
+        colors={getDifficultyColor(difficulty) as [string, string]}
         style={styles.header}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}>
@@ -87,9 +136,9 @@ export default function ChallengeDetailScreen() {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Target size={48} color="#FFFFFF" />
-          <Text style={styles.headerTitle}>{challenge.title}</Text>
+          <Text style={styles.headerTitle}>{title}</Text>
           <View style={styles.difficultyBadge}>
-            <Text style={styles.difficultyText}>{challenge.difficulty || 'Easy'}</Text>
+            <Text style={styles.difficultyText}>{difficulty}</Text>
           </View>
         </View>
       </LinearGradient>
@@ -102,53 +151,97 @@ export default function ChallengeDetailScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}>
             <Star size={32} color="#FFFFFF" />
-            <Text style={styles.pointsValue}>{challenge.points_reward}</Text>
+            <Text style={styles.pointsValue}>{points}</Text>
             <Text style={styles.pointsLabel}>Points Reward</Text>
           </LinearGradient>
         </View>
 
         <View style={styles.descriptionCard}>
           <Text style={styles.sectionTitle}>About This Challenge</Text>
-          <Text style={styles.descriptionText}>{challenge.description || 'No description available'}</Text>
+          <Text style={styles.descriptionText}>{description || 'No description available'}</Text>
+          
+          {challengeConfig?.duration && (
+            <View style={styles.durationBadge}>
+              <Clock size={16} color="#4ECDC4" />
+              <Text style={styles.durationText}>{challengeConfig.duration}</Text>
+            </View>
+          )}
         </View>
+
+        {challengeConfig?.instructions && challengeConfig.instructions.length > 0 && (
+          <View style={styles.instructionsCard}>
+            <Text style={styles.sectionTitle}>📋 How to Complete</Text>
+            {challengeConfig.instructions.map((instruction, index) => (
+              <View key={index} style={styles.instructionItem}>
+                <View style={styles.instructionNumber}>
+                  <Text style={styles.instructionNumberText}>{index + 1}</Text>
+                </View>
+                <Text style={styles.instructionText}>{instruction}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Award size={24} color="#4ECDC4" />
               <Text style={styles.infoLabel}>Difficulty</Text>
-              <Text style={styles.infoValue}>{challenge.difficulty || 'Easy'}</Text>
+              <Text style={styles.infoValue}>{difficulty}</Text>
             </View>
             <View style={styles.infoItem}>
               <Zap size={24} color="#F39C12" />
               <Text style={styles.infoLabel}>Points</Text>
-              <Text style={styles.infoValue}>{challenge.points_reward}</Text>
+              <Text style={styles.infoValue}>{points}</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.tipsCard}>
-          <Text style={styles.sectionTitle}>💡 Tips</Text>
-          <Text style={styles.tipText}>• Take your time to complete this challenge</Text>
-          <Text style={styles.tipText}>• You can track your progress in the Track tab</Text>
-          <Text style={styles.tipText}>• Complete it to earn points and level up!</Text>
-        </View>
+        {challengeConfig?.tips && challengeConfig.tips.length > 0 && (
+          <View style={styles.tipsCard}>
+            <Text style={styles.sectionTitle}>💡 Tips for Success</Text>
+            {challengeConfig.tips.map((tip, index) => (
+              <View key={index} style={styles.tipItem}>
+                <CheckCircle size={16} color="#4ECDC4" />
+                <Text style={styles.tipText}>{tip}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {challengeConfig?.motivation && (
+          <View style={styles.motivationCard}>
+            <Text style={styles.motivationText}>"{challengeConfig.motivation}"</Text>
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.startButton, loading && styles.startButtonDisabled]}
-          onPress={handleStartChallenge}
-          disabled={loading}>
-          {loading ? (
+        {checkingStatus ? (
+          <View style={styles.startButton}>
             <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Play size={24} color="#FFFFFF" />
-              <Text style={styles.startButtonText}>Start Challenge</Text>
-            </>
-          )}
-        </TouchableOpacity>
+            <Text style={styles.startButtonText}>Checking status...</Text>
+          </View>
+        ) : isCompleted ? (
+          <View style={[styles.startButton, styles.completedButton]}>
+            <CheckCircle size={24} color="#FFFFFF" />
+            <Text style={styles.startButtonText}>Completed Today ✅</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.startButton, loading && styles.startButtonDisabled]}
+            onPress={handleStartChallenge}
+            disabled={loading}>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Play size={24} color="#FFFFFF" />
+                <Text style={styles.startButtonText}>Start Challenge</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -246,6 +339,60 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7F8C8D',
     lineHeight: 24,
+    marginBottom: 12,
+  },
+  durationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  durationText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4ECDC4',
+    marginLeft: 6,
+  },
+  instructionsCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  instructionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  instructionNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#4ECDC4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    flexShrink: 0,
+  },
+  instructionNumberText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  instructionText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2C3E50',
+    lineHeight: 20,
   },
   infoCard: {
     backgroundColor: '#FFFFFF',
@@ -280,18 +427,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 12,
-    marginBottom: 100,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
   tipText: {
+    flex: 1,
     fontSize: 14,
     color: '#7F8C8D',
     lineHeight: 22,
-    marginTop: 8,
+    marginLeft: 8,
+  },
+  motivationCard: {
+    backgroundColor: '#F5F7FA',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 100,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4ECDC4',
+  },
+  motivationText: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    color: '#2C3E50',
+    lineHeight: 24,
+    textAlign: 'center',
   },
   footer: {
     position: 'absolute',
@@ -324,6 +492,9 @@ const styles = StyleSheet.create({
   },
   startButtonDisabled: {
     opacity: 0.6,
+  },
+  completedButton: {
+    backgroundColor: '#27AE60',
   },
   startButtonText: {
     color: '#FFFFFF',
