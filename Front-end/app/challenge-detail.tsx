@@ -47,9 +47,11 @@ export default function ChallengeDetailScreen() {
       try {
         const today = new Date().toISOString().split('T')[0];
         const completedResponse = await api.getCompletedTasks();
-        const completedToday = completedResponse.tasks?.some(
-          (task: any) => task.task_id === parseInt(challenge.id) && task.completion_date === today
-        );
+        const completedToday = completedResponse.tasks?.some((task: any) => {
+          if (!task.completion_date) return false;
+          const completionDate = task.completion_date.split('T')[0];
+          return task.task_id === parseInt(challenge.id) && completionDate === today;
+        });
         setIsCompleted(completedToday || false);
       } catch (error) {
         console.error('Error checking completion status:', error);
@@ -94,12 +96,15 @@ export default function ChallengeDetailScreen() {
   };
 
   const handleStartChallenge = () => {
-    // Check if this is Music Therapy challenge
-    const challengeId = challengeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    // Normalize challenge id from title
+    const challengeIdNormalized = challengeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
-    if (challengeId === 'music-therapy' || challengeId === 'music therapy') {
+    if (challengeIdNormalized === 'music-therapy' || challengeIdNormalized === 'music therapy') {
       // Navigate to Music Therapy activity page
       navigation.navigate('MusicTherapyChallenge' as never, { challenge } as never);
+    } else if (challengeIdNormalized === 'deep-breathing' || challengeIdNormalized === 'deep breathing') {
+      // Navigate to Deep Breathing timed challenge
+      navigation.navigate('DeepBreathingChallenge' as never, { challenge } as never);
     } else {
       // For other challenges, show instructions and allow completion
       Alert.alert(

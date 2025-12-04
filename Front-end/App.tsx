@@ -51,6 +51,7 @@ import ProfileScreen from './app/(tabs)/profile';
 import SOSScreen from './app/sos';
 import ChallengeDetailScreen from './app/challenge-detail';
 import MusicTherapyChallenge from './app/challenges/music-therapy';
+import DeepBreathingChallenge from './app/challenges/deep-breathing';
 import NotFoundScreen from './app/+not-found';
 import IndexScreen from './app/index';
 
@@ -154,6 +155,11 @@ function RootNavigator() {
           <Stack.Screen 
             name="MusicTherapyChallenge" 
             component={MusicTherapyChallenge}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="DeepBreathingChallenge" 
+            component={DeepBreathingChallenge}
             options={{ headerShown: false }}
           />
         </>
