@@ -35,13 +35,16 @@ export default function HomeScreen() {
 
       if (profile?.id) {
         try {
-          const achievementsResponse = await api.getAchievements();
-          if (achievementsResponse.achievements && achievementsResponse.achievements.length > 0) {
-            const recent = achievementsResponse.achievements
+          // Use getGamificationProfile to get only earned achievements with earned_at dates
+          const gamificationResponse = await api.getGamificationProfile();
+          if (gamificationResponse?.achievements && gamificationResponse.achievements.length > 0) {
+            // Sort by earned_at date (most recent first) and take top 3
+            const recent = gamificationResponse.achievements
               .sort((a: any, b: any) => new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime())
               .slice(0, 3);
             setRecentBadges(recent);
           } else {
+            // New user - no achievements yet
             setRecentBadges([]);
           }
         } catch (error) {
@@ -194,20 +197,14 @@ export default function HomeScreen() {
           </LinearGradient>
         </View>
 
-        <View style={styles.badgesSection}>
-          <Text style={styles.sectionTitle}>Recent Achievements</Text>
-          <View style={styles.badgesContainer}>
+          <View style={styles.badgesSection}>
+            <Text style={styles.sectionTitle}>Recent Achievements</Text>
+            <View style={styles.badgesContainer}>
             {recentBadges.length > 0 ? (
               recentBadges.map((userBadge, index) => {
-                const badgeData = userBadge.badges || userBadge;
-                const achievementNames = ['First Step', 'Mood Tracker', 'Week Warrior'];
-                const achievementDescriptions = [
-                  'Complete your first day sober',
-                  'Reach 100 points',
-                  'Achieve a 3-day streak'
-                ];
-                const badgeName = badgeData.name || badgeData.achievement_name || achievementNames[index] || 'Achievement';
-                const badgeDescription = badgeData.description || achievementDescriptions[index] || 'Keep up the progress!';
+                // The gamification profile returns achievements with achievement_name and description directly
+                const badgeName = userBadge.achievement_name || userBadge.name || 'Achievement';
+                const badgeDescription = userBadge.description || 'Keep up the progress!';
                 
                 return (
                   <View key={userBadge.id || `badge-${index}`} style={styles.badgeCard}>
@@ -224,8 +221,8 @@ export default function HomeScreen() {
             ) : (
               <Text style={styles.badgesEmptyText}>No achievements yet. Complete tasks to earn badges.</Text>
             )}
+            </View>
           </View>
-        </View>
 
         <View style={styles.quickActions}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>

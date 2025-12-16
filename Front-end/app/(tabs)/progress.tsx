@@ -86,9 +86,18 @@ export default function ProgressScreen() {
         setTriggerCounts(counts);
       }
 
-      const achievementsResponse = await api.getAchievements();
-      if (achievementsResponse.achievements) {
-        setTotalBadges(achievementsResponse.achievements.length);
+      // Use getGamificationProfile to get only earned achievements count
+      try {
+        const gamificationResponse = await api.getGamificationProfile();
+        if (gamificationResponse?.achievements) {
+          // Count only earned achievements (not all available achievements)
+          setTotalBadges(gamificationResponse.achievements.length);
+        } else {
+          setTotalBadges(0);
+        }
+      } catch (achievementsError) {
+        console.error('Error loading achievements:', achievementsError);
+        setTotalBadges(0);
       }
     } catch (error) {
       console.error('Error loading progress data:', error);

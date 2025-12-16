@@ -51,34 +51,29 @@ export default function ProfileScreen() {
   const loadProfileData = async () => {
     if (!profile?.id) return;
 
-    // Mock data - show ONLY one badge (always use mock data)
-    const mockBadge: UserBadge = {
-      id: 'mock-badge-1',
-      user_id: profile.id,
-      badge_id: 'badge-1',
-      earned_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-      created_at: new Date().toISOString(),
-      badges: {
-        id: 'badge-1',
-        name: 'First Step',
-        description: 'Complete your first day sober',
-        icon: 'first-step',
-        requirement_type: 'days_sober',
-        requirement_value: 1,
-        created_at: new Date().toISOString(),
-      },
-    };
-    // Always set only one mock badge - don't load from API
-    setBadges([mockBadge]);
-
     try {
       const contactsResponse = await api.getSOSContacts();
       if (contactsResponse.contacts) {
         setContacts(contactsResponse.contacts);
       }
 
-      // Don't load achievements from API - use mock data only
-      // const achievementsResponse = await api.getAchievements();
+      // Load earned achievements from gamification profile (only shows achievements user has earned)
+      try {
+        const gamificationResponse = await api.getGamificationProfile();
+        if (gamificationResponse?.achievements && gamificationResponse.achievements.length > 0) {
+          // Sort by earned_at date (most recent first)
+          const sortedBadges = gamificationResponse.achievements.sort(
+            (a: any, b: any) => new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime()
+          );
+          setBadges(sortedBadges);
+        } else {
+          // New user - no achievements yet
+          setBadges([]);
+        }
+      } catch (achievementsError) {
+        console.error('[Profile] Error loading achievements:', achievementsError);
+        setBadges([]);
+      }
 
       const alternativesResponse = await api.getAlternatives();
       console.log('[Profile] Alternatives response:', alternativesResponse);
@@ -92,6 +87,7 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error('[Profile] Error loading profile data:', error);
       setAlternatives([]);
+      setBadges([]);
     }
   };
 
@@ -280,17 +276,16 @@ export default function ProfileScreen() {
                 <Text style={styles.emptyText}>No badges earned yet. Keep going!</Text>
               ) : (
                 <View style={styles.badgesGrid}>
-                  {badges.slice(0, 1).map((userBadge) => {
-                    // Get badge data - handle both API response format and mock data format
-                    const badgeData = userBadge.badges || userBadge;
-                    const badgeName = badgeData.name || 'First Step';
-                    const badgeDescription = badgeData.description || 'Complete your first day sober';
+                  {badges.map((userBadge) => {
+                    // The gamification profile returns achievements with achievement_name and description directly
+                    const badgeName = userBadge.achievement_name || userBadge.name || 'Achievement';
+                    const badgeDescription = userBadge.description || 'Keep up the progress!';
                     const earnedDate = userBadge.earned_at 
                       ? new Date(userBadge.earned_at).toLocaleDateString() 
-                      : new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toLocaleDateString();
+                      : new Date().toLocaleDateString();
                     
                     return (
-                      <View key={userBadge.id || 'mock-badge-1'} style={styles.badgeItem}>
+                      <View key={userBadge.id || `badge-${userBadge.achievement_id}`} style={styles.badgeItem}>
                         <View style={styles.badgeIcon}>
                           <Award size={32} color="#FFD700" />
                         </View>

@@ -198,7 +198,11 @@ export default function ChallengesScreen() {
           <View style={styles.statCard}>
             <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
               <Trophy size={28} color="#FFFFFF" />
-              <Text style={styles.statValue}>{profile?.total_points ?? todayPoints ?? 0}</Text>
+              <Text style={styles.statValue}>
+                {profile?.total_points && profile.total_points > 0
+                  ? profile.total_points
+                  : todayPoints || 0}
+              </Text>
               <Text style={styles.statLabel}>Total Points</Text>
             </LinearGradient>
           </View>
