@@ -34,73 +34,165 @@ export default function ProgressScreen() {
 
     setLoading(true);
     try {
-      const daysToFetch = selectedPeriod === 'week' ? 7 : selectedPeriod === 'month' ? 30 : 90;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysToFetch);
+      // Use backend progress endpoints based on selected period
+      if (selectedPeriod === 'week') {
+        const weeklyResponse = await api.getWeeklyProgress();
+        const report = weeklyResponse.weeklyReport;
 
-      const drinkLogsResponse = await api.getDrinkLogs();
-      if (drinkLogsResponse.logs) {
-        const drinkLogs = drinkLogsResponse.logs.filter((log: any) => {
-          const logDate = new Date(log.date);
-          return logDate >= startDate;
-        }).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        const chartData = drinkLogs.map((log: any) => ({
-          x: new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          y: log.drinks_count || 0,
-        }));
-        setDrinkData(chartData);
-
-        let currentStreak = 0;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        for (let i = 0; i < 365; i++) {
-          const checkDate = new Date(today);
-          checkDate.setDate(today.getDate() - i);
-          const dateString = checkDate.toISOString().split('T')[0];
-
-          const log = drinkLogs.find((l: any) => l.date === dateString);
-
-          if (!log || log.drinks_count === 0) {
-            currentStreak++;
-          } else {
-            break;
-          }
+        // Set drink chart data
+        if (report.drinkLogs && report.drinkLogs.length > 0) {
+          const chartData = report.drinkLogs.map((log: any) => {
+            const logDate = log.log_date || log.date;
+            const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count || 0);
+            return {
+              x: new Date(logDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              y: drinkCount,
+            };
+          });
+          setDrinkData(chartData);
+        } else {
+          setDrinkData([]);
         }
 
-        setSoberDays(currentStreak);
-      }
+        // Set sober days from backend calculation
+        setSoberDays(report.soberDays || 0);
 
-      const triggersResponse = await api.getTriggerLogs();
-      if (triggersResponse.logs) {
-        const triggers = triggersResponse.logs.filter((trigger: any) => {
-          const triggerDate = new Date(trigger.date);
-          return triggerDate >= startDate;
-        });
+        // Trigger counts not available in weekly report, fetch separately for now
+        try {
+          const triggersResponse = await api.getTriggerLogs();
+          if (triggersResponse.logs) {
+            const startDate = new Date(report.period.startDate);
+            const triggers = triggersResponse.logs.filter((trigger: any) => {
+              const triggerDate = new Date(trigger.date);
+              return triggerDate >= startDate;
+            });
 
-        const counts: { [key: string]: number } = {};
-        triggers.forEach((trigger: any) => {
-          counts[trigger.trigger_type] = (counts[trigger.trigger_type] || 0) + 1;
-        });
-        setTriggerCounts(counts);
-      }
+            const counts: { [key: string]: number } = {};
+            triggers.forEach((trigger: any) => {
+              counts[trigger.trigger_type] = (counts[trigger.trigger_type] || 0) + 1;
+            });
+            setTriggerCounts(counts);
+          }
+        } catch (triggerError) {
+          console.error('Error loading triggers:', triggerError);
+          setTriggerCounts({});
+        }
 
-      // Use getGamificationProfile to get only earned achievements count
-      try {
-        const gamificationResponse = await api.getGamificationProfile();
-        if (gamificationResponse?.achievements) {
-          // Count only earned achievements (not all available achievements)
-          setTotalBadges(gamificationResponse.achievements.length);
-        } else {
+        // Get badges count from gamification profile
+        try {
+          const gamificationResponse = await api.getGamificationProfile();
+          setTotalBadges(gamificationResponse?.achievements?.length || 0);
+        } catch (achievementsError) {
+          console.error('Error loading achievements:', achievementsError);
           setTotalBadges(0);
         }
-      } catch (achievementsError) {
-        console.error('Error loading achievements:', achievementsError);
-        setTotalBadges(0);
+
+      } else if (selectedPeriod === 'month') {
+        const monthlyResponse = await api.getMonthlyProgress();
+        const report = monthlyResponse.monthlyReport;
+
+        // Set drink chart data
+        if (report.drinkLogs && report.drinkLogs.length > 0) {
+          const chartData = report.drinkLogs.map((log: any) => {
+            const logDate = log.log_date || log.date;
+            const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count || 0);
+            return {
+              x: new Date(logDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              y: drinkCount,
+            };
+          });
+          setDrinkData(chartData);
+        } else {
+          setDrinkData([]);
+        }
+
+        // Set sober days from backend calculation
+        setSoberDays(report.soberDays || 0);
+
+        // Set trigger counts from backend (monthly report includes this)
+        if (report.triggerCounts) {
+          setTriggerCounts(report.triggerCounts);
+        } else {
+          setTriggerCounts({});
+        }
+
+        // Get badges count from gamification profile
+        try {
+          const gamificationResponse = await api.getGamificationProfile();
+          setTotalBadges(gamificationResponse?.achievements?.length || 0);
+        } catch (achievementsError) {
+          console.error('Error loading achievements:', achievementsError);
+          setTotalBadges(0);
+        }
+
+      } else {
+        // For "all" (90 days), use overall progress + fetch drink logs for chart
+        const overallResponse = await api.getOverallProgress();
+        const overall = overallResponse.overallProgress;
+
+        // Set sober days from overall statistics
+        setSoberDays(overall.statistics.soberDays || 0);
+
+        // For 90 days chart, fetch drink logs separately
+        try {
+          const drinkLogsResponse = await api.getDrinkLogs();
+          if (drinkLogsResponse.logs) {
+            const daysToFetch = 90;
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - daysToFetch);
+
+            const drinkLogs = drinkLogsResponse.logs.filter((log: any) => {
+              const logDate = new Date(log.date);
+              return logDate >= startDate;
+            }).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+            const chartData = drinkLogs.map((log: any) => ({
+              x: new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              y: log.drinks_count || 0,
+            }));
+            setDrinkData(chartData);
+          } else {
+            setDrinkData([]);
+          }
+        } catch (drinkError) {
+          console.error('Error loading drink logs:', drinkError);
+          setDrinkData([]);
+        }
+
+        // For triggers, fetch separately for 90 days
+        try {
+          const triggersResponse = await api.getTriggerLogs();
+          if (triggersResponse.logs) {
+            const daysToFetch = 90;
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - daysToFetch);
+
+            const triggers = triggersResponse.logs.filter((trigger: any) => {
+              const triggerDate = new Date(trigger.date);
+              return triggerDate >= startDate;
+            });
+
+            const counts: { [key: string]: number } = {};
+            triggers.forEach((trigger: any) => {
+              counts[trigger.trigger_type] = (counts[trigger.trigger_type] || 0) + 1;
+            });
+            setTriggerCounts(counts);
+          }
+        } catch (triggerError) {
+          console.error('Error loading triggers:', triggerError);
+          setTriggerCounts({});
+        }
+
+        // Set badges from overall statistics
+        setTotalBadges(overall.statistics.achievementsEarned || 0);
       }
     } catch (error) {
       console.error('Error loading progress data:', error);
+      // Fallback: set empty states
+      setDrinkData([]);
+      setTriggerCounts({});
+      setTotalBadges(0);
+      setSoberDays(0);
     } finally {
       setLoading(false);
     }

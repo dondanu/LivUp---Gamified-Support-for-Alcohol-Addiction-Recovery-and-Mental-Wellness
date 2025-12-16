@@ -88,4 +88,10 @@ export const api = {
     apiExports.completeTask({ taskId: parseInt(challengeId) }),
   completeChallenge: (userChallengeId: string) =>
     apiExports.completeTask({ taskId: parseInt(userChallengeId) }),
+
+  // Progress
+  getWeeklyProgress: apiExports.getWeeklyProgress,
+  getMonthlyProgress: apiExports.getMonthlyProgress,
+  getOverallProgress: apiExports.getOverallProgress,
+  getDashboard: apiExports.getDashboard,
 };
