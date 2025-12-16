@@ -39,20 +39,35 @@ export default function ProgressScreen() {
         const weeklyResponse = await api.getWeeklyProgress();
         const report = weeklyResponse.weeklyReport;
 
-        // Set drink chart data
+        // Set drink chart data - fill in all 7 days
+        const startDate = new Date(report.period.startDate);
+        const endDate = new Date(report.period.endDate);
+        const allDays: { x: string; y: number }[] = [];
+        
+        // Create a map of existing drink logs by date
+        const drinkLogsMap = new Map<string, number>();
         if (report.drinkLogs && report.drinkLogs.length > 0) {
-          const chartData = report.drinkLogs.map((log: any) => {
+          report.drinkLogs.forEach((log: any) => {
             const logDate = log.log_date || log.date;
+            const dateKey = new Date(logDate).toISOString().split('T')[0];
             const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count || 0);
-            return {
-              x: new Date(logDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              y: drinkCount,
-            };
+            drinkLogsMap.set(dateKey, drinkCount);
           });
-          setDrinkData(chartData);
-        } else {
-          setDrinkData([]);
         }
+
+        // Fill in all days in the period
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const dateKey = currentDate.toISOString().split('T')[0];
+          const drinkCount = drinkLogsMap.get(dateKey) || 0;
+          allDays.push({
+            x: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            y: drinkCount,
+          });
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        setDrinkData(allDays);
 
         // Set sober days from backend calculation
         setSoberDays(report.soberDays || 0);
@@ -91,20 +106,37 @@ export default function ProgressScreen() {
         const monthlyResponse = await api.getMonthlyProgress();
         const report = monthlyResponse.monthlyReport;
 
-        // Set drink chart data
+        // Set drink chart data - fill in all days in the month
+        const startDate = new Date(report.period.startDate);
+        const endDate = new Date(report.period.endDate);
+        const allDays: { x: string; y: number }[] = [];
+        
+        // Create a map of existing drink logs by date
+        const drinkLogsMap = new Map<string, number>();
         if (report.drinkLogs && report.drinkLogs.length > 0) {
-          const chartData = report.drinkLogs.map((log: any) => {
+          report.drinkLogs.forEach((log: any) => {
             const logDate = log.log_date || log.date;
+            const dateKey = new Date(logDate).toISOString().split('T')[0];
             const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count || 0);
-            return {
-              x: new Date(logDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              y: drinkCount,
-            };
+            drinkLogsMap.set(dateKey, drinkCount);
           });
-          setDrinkData(chartData);
-        } else {
-          setDrinkData([]);
         }
+
+        // Fill in all days in the period (limit to 30 days for chart readability)
+        const currentDate = new Date(startDate);
+        let dayCount = 0;
+        while (currentDate <= endDate && dayCount < 30) {
+          const dateKey = currentDate.toISOString().split('T')[0];
+          const drinkCount = drinkLogsMap.get(dateKey) || 0;
+          allDays.push({
+            x: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            y: drinkCount,
+          });
+          currentDate.setDate(currentDate.getDate() + 1);
+          dayCount++;
+        }
+        
+        setDrinkData(allDays);
 
         // Set sober days from backend calculation
         setSoberDays(report.soberDays || 0);
@@ -133,27 +165,45 @@ export default function ProgressScreen() {
         // Set sober days from overall statistics
         setSoberDays(overall.statistics.soberDays || 0);
 
-        // For 90 days chart, fetch drink logs separately
+        // For 90 days chart, fetch drink logs separately and fill in missing days
         try {
           const drinkLogsResponse = await api.getDrinkLogs();
+          const daysToFetch = 90;
+          const endDate = new Date();
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() - daysToFetch);
+          
+          // Create a map of existing drink logs by date
+          const drinkLogsMap = new Map<string, number>();
           if (drinkLogsResponse.logs) {
-            const daysToFetch = 90;
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - daysToFetch);
-
-            const drinkLogs = drinkLogsResponse.logs.filter((log: any) => {
+            drinkLogsResponse.logs.forEach((log: any) => {
               const logDate = new Date(log.date);
-              return logDate >= startDate;
-            }).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-            const chartData = drinkLogs.map((log: any) => ({
-              x: new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              y: log.drinks_count || 0,
-            }));
-            setDrinkData(chartData);
-          } else {
-            setDrinkData([]);
+              if (logDate >= startDate && logDate <= endDate) {
+                const dateKey = logDate.toISOString().split('T')[0];
+                drinkLogsMap.set(dateKey, log.drinks_count || 0);
+              }
+            });
           }
+
+          // Fill in all days (sample every 3 days for 90 days to keep chart readable)
+          const allDays: { x: string; y: number }[] = [];
+          const currentDate = new Date(startDate);
+          let dayCount = 0;
+          while (currentDate <= endDate && dayCount < 30) {
+            // Sample every 3 days to show ~30 data points for 90 days
+            if (dayCount % 3 === 0 || dayCount === 0) {
+              const dateKey = currentDate.toISOString().split('T')[0];
+              const drinkCount = drinkLogsMap.get(dateKey) || 0;
+              allDays.push({
+                x: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                y: drinkCount,
+              });
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+            dayCount++;
+          }
+          
+          setDrinkData(allDays);
         } catch (drinkError) {
           console.error('Error loading drink logs:', drinkError);
           setDrinkData([]);
@@ -287,7 +337,8 @@ export default function ProgressScreen() {
               <View style={styles.chart}>
                 {drinkData.map((item, index) => {
                   const maxValue = Math.max(...drinkData.map((d) => d.y), 1);
-                  const barHeight = (item.y / maxValue) * 150;
+                  // Ensure minimum height for visibility, but scale properly
+                  const barHeight = maxValue > 0 ? Math.max((item.y / maxValue) * 150, item.y > 0 ? 4 : 0) : 0;
 
                   return (
                     <View key={index} style={styles.barContainer}>

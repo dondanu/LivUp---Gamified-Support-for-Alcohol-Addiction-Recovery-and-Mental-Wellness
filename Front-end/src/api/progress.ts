@@ -25,10 +25,18 @@ export interface MonthlyReport {
   soberDays: number;
   totalDrinks: number;
   currentStreak: number;
+  longestStreak?: number;
+  totalDaysSober?: number;
   tasksCompleted: number;
+  tasksByCategory?: { [key: string]: number };
   pointsEarned: number;
+  totalPoints?: number;
+  currentLevel?: number;
   newAchievements: any[];
   averageMood: number | null;
+  triggerCounts?: { [key: string]: number };
+  moodLogsCount?: number;
+  triggerLogsCount?: number;
   drinkLogs: any[];
   moodLogs: any[];
   achievements: any[];
