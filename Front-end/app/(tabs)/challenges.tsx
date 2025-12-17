@@ -83,7 +83,7 @@ export default function ChallengesScreen() {
               points_reward: task.points_reward || task.points || 0,
             },
           }));
-
+          
           setUserChallenges(userChallengesList);
           setTodayPoints(todayResponse.totalPointsEarnedToday || 0);
           console.log('[Challenges] Today completed:', completedToday.length);

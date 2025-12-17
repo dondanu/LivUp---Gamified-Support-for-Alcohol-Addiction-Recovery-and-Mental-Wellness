@@ -286,15 +286,15 @@ export default function ProfileScreen() {
                     
                     return (
                       <View key={userBadge.id || `badge-${userBadge.achievement_id}`} style={styles.badgeItem}>
-                        <View style={styles.badgeIcon}>
-                          <Award size={32} color="#FFD700" />
-                        </View>
-                        <Text style={styles.badgeName}>{badgeName}</Text>
-                        <Text style={styles.badgeDescription} numberOfLines={2}>
-                          {badgeDescription}
-                        </Text>
-                        <Text style={styles.badgeDate}>{earnedDate}</Text>
+                      <View style={styles.badgeIcon}>
+                        <Award size={32} color="#FFD700" />
                       </View>
+                        <Text style={styles.badgeName}>{badgeName}</Text>
+                      <Text style={styles.badgeDescription} numberOfLines={2}>
+                          {badgeDescription}
+                      </Text>
+                        <Text style={styles.badgeDate}>{earnedDate}</Text>
+                    </View>
                     );
                   })}
                 </View>

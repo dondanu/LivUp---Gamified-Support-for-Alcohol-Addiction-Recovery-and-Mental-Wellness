@@ -24,6 +24,7 @@ export default function ProgressScreen() {
   const [totalBadges, setTotalBadges] = useState(0);
   const [soberDays, setSoberDays] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'all'>('week');
+  const [xAxisLabel, setXAxisLabel] = useState('Date');
 
   useEffect(() => {
     loadProgressData();
@@ -38,6 +39,10 @@ export default function ProgressScreen() {
       if (selectedPeriod === 'week') {
         const weeklyResponse = await api.getWeeklyProgress();
         const report = weeklyResponse.weeklyReport;
+        setXAxisLabel(() => {
+          const startLabel = new Date(report.period.startDate).toLocaleDateString('en-US', { month: 'short' });
+          return `Date (${startLabel})`;
+        });
 
         console.log('[Progress] Weekly report:', {
           startDate: report.period.startDate,
@@ -87,7 +92,7 @@ export default function ProgressScreen() {
           const dateKey = currentDate.toISOString().split('T')[0];
           const drinkCount = drinkLogsMap.get(dateKey) || 0;
           allDays.push({
-            x: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            x: currentDate.getDate().toString(), // show day number only
             y: drinkCount,
           });
           currentDate.setDate(currentDate.getDate() + 1);
@@ -134,7 +139,7 @@ export default function ProgressScreen() {
                 const dateKey = fallbackCurrentDate.toISOString().split('T')[0];
                 const drinkCount = fallbackMap.get(dateKey) || 0;
                 fallbackDays.push({
-                  x: fallbackCurrentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  x: fallbackCurrentDate.getDate().toString(), // day number
                   y: drinkCount,
                 });
                 fallbackCurrentDate.setDate(fallbackCurrentDate.getDate() + 1);
@@ -184,6 +189,10 @@ export default function ProgressScreen() {
       } else if (selectedPeriod === 'month') {
         const monthlyResponse = await api.getMonthlyProgress();
         const report = monthlyResponse.monthlyReport;
+        setXAxisLabel(() => {
+          const startLabel = new Date(report.period.startDate).toLocaleDateString('en-US', { month: 'short' });
+          return `Date (${startLabel})`;
+        });
 
         // Set drink chart data - fill in all days in the month
         const startDate = new Date(report.period.startDate);
@@ -220,7 +229,7 @@ export default function ProgressScreen() {
           const dateKey = currentDate.toISOString().split('T')[0];
           const drinkCount = drinkLogsMap.get(dateKey) || 0;
           allDays.push({
-            x: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            x: currentDate.getDate().toString(), // day number
             y: drinkCount,
           });
           currentDate.setDate(currentDate.getDate() + 1);
@@ -252,6 +261,7 @@ export default function ProgressScreen() {
         // For "all" (90 days), use overall progress + fetch drink logs for chart
         const overallResponse = await api.getOverallProgress();
         const overall = overallResponse.overallProgress;
+        setXAxisLabel('Date');
 
         // Set sober days from overall statistics
         setSoberDays(overall.statistics.soberDays || 0);
@@ -301,7 +311,7 @@ export default function ProgressScreen() {
               const dateKey = currentDate.toISOString().split('T')[0];
               const drinkCount = drinkLogsMap.get(dateKey) || 0;
               allDays.push({
-                x: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                x: currentDate.getDate().toString(), // day number
                 y: drinkCount,
               });
             }
@@ -440,29 +450,75 @@ export default function ProgressScreen() {
 
           {drinkData.length > 0 ? (
             <View style={styles.chartContainer}>
-              <View style={styles.chart}>
-                {drinkData.map((item, index) => {
-                  const maxValue = Math.max(...drinkData.map((d) => d.y), 1);
-                  // Ensure minimum height for visibility, but scale properly
-                  const barHeight = maxValue > 0 ? Math.max((item.y / maxValue) * 150, item.y > 0 ? 4 : 0) : 0;
+              {/* Y axis: drink count */}
+              <View style={styles.chartWithAxis}>
+                <View style={styles.yAxis}>
+                  {(() => {
+                    // Max drinks in this period, at least 1 so we always render axis
+                    const maxValue = Math.max(...drinkData.map((d) => d.y), 1);
+                    const maxInt = Math.ceil(maxValue);
 
-                  return (
-                    <View key={index} style={styles.barContainer}>
-                      <View style={styles.barWrapper}>
-                        <LinearGradient
-                          colors={['#4ECDC4', '#44A08D']}
-                          style={[styles.bar, { height: barHeight || 4 }]}
-                          start={{x: 0, y: 0}} end={{x: 1, y: 1}}
-                        />
-                      </View>
-                      <Text style={styles.barLabel} numberOfLines={1}>
-                        {item.x}
+                    // Use up to 5 ticks: max -> ... -> 0 (always include 0 at bottom)
+                    const ticks: number[] = [];
+                    if (maxInt <= 5) {
+                      for (let i = maxInt; i >= 0; i--) ticks.push(i);
+                    } else {
+                      const step = Math.max(1, Math.ceil(maxInt / 4));
+                      for (let v = maxInt; v >= 0; v -= step) {
+                        ticks.push(v);
+                      }
+                      if (ticks[ticks.length - 1] !== 0) ticks.push(0);
+                    }
+
+                    return ticks.map((value, idx) => (
+                      <Text
+                        key={`${value}-${idx}`}
+                        style={[styles.yAxisLabel, idx === ticks.length - 1 && styles.yAxisZeroLabel]}>
+                        {value}
                       </Text>
-                      <Text style={styles.barValue}>{item.y}</Text>
-                    </View>
-                  );
-                })}
+                    ));
+                  })()}
+                  <View style={styles.yAxisTitleContainer}>
+                    <Text style={styles.yAxisTitle}>Drinks</Text>
+                  </View>
+                </View>
+
+                {/* Bars with X axis (dates) */}
+                <View style={styles.chart}>
+                  {drinkData.map((item, index) => {
+                    const maxValue = Math.max(...drinkData.map((d) => d.y), 1);
+                    const barHeight =
+                      maxValue > 0
+                        ? Math.max((item.y / maxValue) * 150, item.y > 0 ? 4 : 0)
+                        : 0;
+
+                    // Show fewer x-labels to avoid crowding
+                    const labelStep = Math.max(1, Math.ceil(drinkData.length / 8));
+                    const showLabel =
+                      drinkData.length <= 10 ||
+                      index === 0 ||
+                      index === drinkData.length - 1 ||
+                      index % labelStep === 0;
+
+                    return (
+                      <View key={index} style={styles.barContainer}>
+                        <View style={styles.barWrapper}>
+                          <LinearGradient
+                            colors={['#4ECDC4', '#44A08D']}
+                            style={[styles.bar, { height: barHeight || 4 }]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                          />
+                        </View>
+                        <Text style={styles.barLabel} numberOfLines={1}>
+                          {showLabel ? item.x : ''}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
+              <Text style={styles.xAxisTitle}>{xAxisLabel}</Text>
             </View>
           ) : (
             <Text style={styles.noDataText}>No drink data available for this period</Text>
@@ -652,6 +708,36 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  chartWithAxis: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  yAxis: {
+    width: 32,
+    marginRight: 8,
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 180,
+  },
+  yAxisLabel: {
+    fontSize: 10,
+    color: '#7F8C8D',
+  },
+  yAxisZeroLabel: {
+    marginTop: 4,
+  },
+  yAxisTitleContainer: {
+    position: 'absolute',
+    left: -8,
+    top: '40%',
+    transform: [{ rotate: '-90deg' }],
+  },
+  yAxisTitle: {
+    fontSize: 11,
+    color: '#2C3E50',
+    fontWeight: '600',
   },
   chart: {
     flexDirection: 'row',
@@ -659,6 +745,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     height: 200,
     paddingHorizontal: 8,
+    flex: 1,
+  },
+  xAxisTitle: {
+    marginTop: 8,
+    fontSize: 11,
+    color: '#2C3E50',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   barContainer: {
     flex: 1,
