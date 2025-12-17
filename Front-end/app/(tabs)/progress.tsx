@@ -39,6 +39,13 @@ export default function ProgressScreen() {
         const weeklyResponse = await api.getWeeklyProgress();
         const report = weeklyResponse.weeklyReport;
 
+        console.log('[Progress] Weekly report:', {
+          startDate: report.period.startDate,
+          endDate: report.period.endDate,
+          drinkLogsCount: report.drinkLogs?.length || 0,
+          drinkLogs: report.drinkLogs
+        });
+
         // Set drink chart data - fill in all 7 days
         const startDate = new Date(report.period.startDate);
         const endDate = new Date(report.period.endDate);
@@ -48,16 +55,35 @@ export default function ProgressScreen() {
         const drinkLogsMap = new Map<string, number>();
         if (report.drinkLogs && report.drinkLogs.length > 0) {
           report.drinkLogs.forEach((log: any) => {
+            // Handle both log_date (backend) and date (transformed) field names
             const logDate = log.log_date || log.date;
-            const dateKey = new Date(logDate).toISOString().split('T')[0];
-            const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count || 0);
+            if (!logDate) {
+              console.warn('[Progress] Log missing date:', log);
+              return;
+            }
+            
+            // Normalize date to YYYY-MM-DD format
+            const dateObj = new Date(logDate);
+            if (isNaN(dateObj.getTime())) {
+              console.warn('[Progress] Invalid date:', logDate);
+              return;
+            }
+            
+            const dateKey = dateObj.toISOString().split('T')[0];
+            // Handle both drink_count (backend) and drinks_count (transformed) field names
+            const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count !== undefined ? log.drinks_count : 0);
+            console.log('[Progress] Mapping log:', { dateKey, drinkCount, log });
             drinkLogsMap.set(dateKey, drinkCount);
           });
         }
 
-        // Fill in all days in the period
+        // Fill in all days in the period (only from startDate to endDate)
         const currentDate = new Date(startDate);
-        while (currentDate <= endDate) {
+        currentDate.setHours(0, 0, 0, 0);
+        const endDateObj = new Date(endDate);
+        endDateObj.setHours(23, 59, 59, 999);
+        
+        while (currentDate <= endDateObj) {
           const dateKey = currentDate.toISOString().split('T')[0];
           const drinkCount = drinkLogsMap.get(dateKey) || 0;
           allDays.push({
@@ -67,7 +93,60 @@ export default function ProgressScreen() {
           currentDate.setDate(currentDate.getDate() + 1);
         }
         
-        setDrinkData(allDays);
+        console.log('[Progress] Final chart data:', { allDaysCount: allDays.length, allDays });
+        setDrinkData(allDays.length > 0 ? allDays : []);
+        
+        // Fallback: If no data from progress endpoint, try fetching directly
+        if (allDays.length === 0 || drinkLogsMap.size === 0) {
+          console.log('[Progress] No data from progress endpoint, fetching drink logs directly...');
+          try {
+            const directLogsResponse = await api.getDrinkLogs({
+              startDate: report.period.startDate,
+              endDate: report.period.endDate,
+              limit: 50
+            });
+            
+            if (directLogsResponse.logs && directLogsResponse.logs.length > 0) {
+              console.log('[Progress] Direct logs fetched:', directLogsResponse.logs);
+              // Rebuild the map and chart data
+              const fallbackMap = new Map<string, number>();
+              directLogsResponse.logs.forEach((log: any) => {
+                const logDate = log.log_date || log.date;
+                if (logDate) {
+                  const dateObj = new Date(logDate);
+                  if (!isNaN(dateObj.getTime())) {
+                    const dateKey = dateObj.toISOString().split('T')[0];
+                    const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count !== undefined ? log.drinks_count : 0);
+                    fallbackMap.set(dateKey, drinkCount);
+                  }
+                }
+              });
+              
+              // Rebuild chart data
+              const fallbackDays: { x: string; y: number }[] = [];
+              const fallbackStartDate = new Date(report.period.startDate);
+              fallbackStartDate.setHours(0, 0, 0, 0);
+              const fallbackEndDate = new Date(report.period.endDate);
+              fallbackEndDate.setHours(23, 59, 59, 999);
+              const fallbackCurrentDate = new Date(fallbackStartDate);
+              
+              while (fallbackCurrentDate <= fallbackEndDate) {
+                const dateKey = fallbackCurrentDate.toISOString().split('T')[0];
+                const drinkCount = fallbackMap.get(dateKey) || 0;
+                fallbackDays.push({
+                  x: fallbackCurrentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  y: drinkCount,
+                });
+                fallbackCurrentDate.setDate(fallbackCurrentDate.getDate() + 1);
+              }
+              
+              console.log('[Progress] Fallback chart data:', fallbackDays);
+              setDrinkData(fallbackDays);
+            }
+          } catch (fallbackError) {
+            console.error('[Progress] Fallback fetch error:', fallbackError);
+          }
+        }
 
         // Set sober days from backend calculation
         setSoberDays(report.soberDays || 0);
@@ -115,17 +194,29 @@ export default function ProgressScreen() {
         const drinkLogsMap = new Map<string, number>();
         if (report.drinkLogs && report.drinkLogs.length > 0) {
           report.drinkLogs.forEach((log: any) => {
+            // Handle both log_date (backend) and date (transformed) field names
             const logDate = log.log_date || log.date;
-            const dateKey = new Date(logDate).toISOString().split('T')[0];
-            const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count || 0);
+            if (!logDate) return;
+            
+            // Normalize date to YYYY-MM-DD format
+            const dateObj = new Date(logDate);
+            if (isNaN(dateObj.getTime())) return;
+            
+            const dateKey = dateObj.toISOString().split('T')[0];
+            // Handle both drink_count (backend) and drinks_count (transformed) field names
+            const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count !== undefined ? log.drinks_count : 0);
             drinkLogsMap.set(dateKey, drinkCount);
           });
         }
 
         // Fill in all days in the period (limit to 30 days for chart readability)
         const currentDate = new Date(startDate);
+        currentDate.setHours(0, 0, 0, 0);
+        const endDateObj = new Date(endDate);
+        endDateObj.setHours(23, 59, 59, 999);
         let dayCount = 0;
-        while (currentDate <= endDate && dayCount < 30) {
+        
+        while (currentDate <= endDateObj && dayCount < 30) {
           const dateKey = currentDate.toISOString().split('T')[0];
           const drinkCount = drinkLogsMap.get(dateKey) || 0;
           allDays.push({
@@ -136,7 +227,7 @@ export default function ProgressScreen() {
           dayCount++;
         }
         
-        setDrinkData(allDays);
+        setDrinkData(allDays.length > 0 ? allDays : []);
 
         // Set sober days from backend calculation
         setSoberDays(report.soberDays || 0);
@@ -177,10 +268,25 @@ export default function ProgressScreen() {
           const drinkLogsMap = new Map<string, number>();
           if (drinkLogsResponse.logs) {
             drinkLogsResponse.logs.forEach((log: any) => {
-              const logDate = new Date(log.date);
-              if (logDate >= startDate && logDate <= endDate) {
+              // Handle both log_date (backend) and date (transformed) field names
+              const logDateStr = log.log_date || log.date;
+              if (!logDateStr) return;
+              
+              const logDate = new Date(logDateStr);
+              if (isNaN(logDate.getTime())) return;
+              
+              // Normalize dates for comparison (ignore time)
+              logDate.setHours(0, 0, 0, 0);
+              const compareStartDate = new Date(startDate);
+              compareStartDate.setHours(0, 0, 0, 0);
+              const compareEndDate = new Date(endDate);
+              compareEndDate.setHours(23, 59, 59, 999);
+              
+              if (logDate >= compareStartDate && logDate <= compareEndDate) {
                 const dateKey = logDate.toISOString().split('T')[0];
-                drinkLogsMap.set(dateKey, log.drinks_count || 0);
+                // Handle both drink_count (backend) and drinks_count (transformed) field names
+                const drinkCount = log.drink_count !== undefined ? log.drink_count : (log.drinks_count !== undefined ? log.drinks_count : 0);
+                drinkLogsMap.set(dateKey, drinkCount);
               }
             });
           }

@@ -6,11 +6,16 @@ const getWeeklyProgress = async (req, res) => {
     const userId = req.user.userId;
     const { startDate, endDate } = getDateRange('week');
 
-    const { data: drinkLogs } = await query('SELECT * FROM drink_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC', [userId, startDate, endDate]);
-    const { data: completedTasks } = await query('SELECT udt.*, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date >= ? AND udt.completion_date <= ?', [userId, startDate, endDate]);
-    const { data: moodLogs } = await query('SELECT * FROM mood_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC', [userId, startDate, endDate]);
+    // Get user registration date to ensure tracking starts from registration
+    const { data: user } = await queryOne('SELECT created_at FROM users WHERE id = ?', [userId]);
+    const registrationDate = user?.created_at ? new Date(user.created_at).toISOString().split('T')[0] : startDate;
+    const actualStartDate = registrationDate > startDate ? registrationDate : startDate;
+
+    const { data: drinkLogs } = await query('SELECT * FROM drink_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC', [userId, actualStartDate, endDate]);
+    const { data: completedTasks } = await query('SELECT udt.*, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date >= ? AND udt.completion_date <= ?', [userId, actualStartDate, endDate]);
+    const { data: moodLogs } = await query('SELECT * FROM mood_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC', [userId, actualStartDate, endDate]);
     const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
-    const { data: achievementsThisWeek } = await query('SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ? AND DATE(ua.earned_at) >= ? AND DATE(ua.earned_at) <= ?', [userId, startDate, endDate]);
+    const { data: achievementsThisWeek } = await query('SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ? AND DATE(ua.earned_at) >= ? AND DATE(ua.earned_at) <= ?', [userId, actualStartDate, endDate]);
 
     const drinkLogsArray = drinkLogs || [];
     const completedTasksArray = completedTasks || [];
@@ -24,7 +29,7 @@ const getWeeklyProgress = async (req, res) => {
     const averageMood = moodLogsArray.length > 0 ? moodLogsArray.reduce((sum, log) => sum + log.mood_score, 0) / moodLogsArray.length : 0;
 
     res.status(200).json({
-      weeklyReport: { period: { startDate, endDate }, soberDays, totalDrinks, currentStreak: profile.current_streak, tasksCompleted, pointsEarned, newAchievements: (achievementsThisWeek || []).length, averageMood: parseFloat(averageMood.toFixed(2)), drinkLogs: drinkLogsArray, moodLogs: moodLogsArray, achievements: achievementsThisWeek || [] }
+      weeklyReport: { period: { startDate: actualStartDate, endDate }, soberDays, totalDrinks, currentStreak: profile.current_streak, tasksCompleted, pointsEarned, newAchievements: (achievementsThisWeek || []).length, averageMood: parseFloat(averageMood.toFixed(2)), drinkLogs: drinkLogsArray, moodLogs: moodLogsArray, achievements: achievementsThisWeek || [] }
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
@@ -36,10 +41,15 @@ const getMonthlyProgress = async (req, res) => {
     const userId = req.user.userId;
     const { startDate, endDate } = getDateRange('month');
 
-    const { data: drinkLogs } = await query('SELECT * FROM drink_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC', [userId, startDate, endDate]);
-    const { data: completedTasks } = await query('SELECT udt.*, dt.points_reward, dt.category FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date >= ? AND udt.completion_date <= ?', [userId, startDate, endDate]);
-    const { data: moodLogs } = await query('SELECT * FROM mood_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ?', [userId, startDate, endDate]);
-    const { data: triggerLogs } = await query('SELECT * FROM trigger_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ?', [userId, startDate, endDate]);
+    // Get user registration date to ensure tracking starts from registration
+    const { data: user } = await queryOne('SELECT created_at FROM users WHERE id = ?', [userId]);
+    const registrationDate = user?.created_at ? new Date(user.created_at).toISOString().split('T')[0] : startDate;
+    const actualStartDate = registrationDate > startDate ? registrationDate : startDate;
+
+    const { data: drinkLogs } = await query('SELECT * FROM drink_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC', [userId, actualStartDate, endDate]);
+    const { data: completedTasks } = await query('SELECT udt.*, dt.points_reward, dt.category FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date >= ? AND udt.completion_date <= ?', [userId, actualStartDate, endDate]);
+    const { data: moodLogs } = await query('SELECT * FROM mood_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ?', [userId, actualStartDate, endDate]);
+    const { data: triggerLogs } = await query('SELECT * FROM trigger_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ?', [userId, actualStartDate, endDate]);
     const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
 
     const drinkLogsArray = drinkLogs || [];
@@ -67,7 +77,7 @@ const getMonthlyProgress = async (req, res) => {
     }, {});
 
     res.status(200).json({
-      monthlyReport: { period: { startDate, endDate }, soberDays, totalDrinks, currentStreak: profile.current_streak, longestStreak: profile.longest_streak, totalDaysSober: profile.days_sober, tasksCompleted, tasksByCategory, pointsEarned, totalPoints: profile.total_points, currentLevel: profile.level_id, averageMood: parseFloat(averageMood.toFixed(2)), triggerCounts, moodLogsCount: moodLogsArray.length, triggerLogsCount: triggerLogsArray.length }
+      monthlyReport: { period: { startDate: actualStartDate, endDate }, soberDays, totalDrinks, currentStreak: profile.current_streak, longestStreak: profile.longest_streak, totalDaysSober: profile.days_sober, tasksCompleted, tasksByCategory, pointsEarned, totalPoints: profile.total_points, currentLevel: profile.level_id, averageMood: parseFloat(averageMood.toFixed(2)), triggerCounts, moodLogsCount: moodLogsArray.length, triggerLogsCount: triggerLogsArray.length }
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });

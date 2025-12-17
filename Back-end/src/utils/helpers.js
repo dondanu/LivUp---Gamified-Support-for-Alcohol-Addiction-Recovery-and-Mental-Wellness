@@ -59,26 +59,54 @@ const checkAchievementEligibility = (userStats, achievement) => {
 };
 
 const getDateRange = (period) => {
-  const endDate = new Date();
-  const startDate = new Date();
+  // Base on “current week Monday to Sunday” where Sunday can be in the future.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let startDate = new Date(today);
+  let endDate = new Date(today);
 
   switch (period) {
-    case 'week':
-      startDate.setDate(endDate.getDate() - 7);
+    case 'week': {
+      const dayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon, ... 6 = Sat
+      const diffToMonday = (dayOfWeek + 6) % 7; // Sun -> 6, Mon -> 0, Tue ->1, ...
+
+      // Start: Monday of current week
+      startDate.setDate(today.getDate() - diffToMonday);
+      startDate.setHours(0, 0, 0, 0);
+
+      // End: Sunday of the same week (may be in the future)
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
       break;
-    case 'month':
-      startDate.setMonth(endDate.getMonth() - 1);
+    }
+    case 'month': {
+      startDate.setMonth(today.getMonth() - 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
       break;
-    case 'year':
-      startDate.setFullYear(endDate.getFullYear() - 1);
+    }
+    case 'year': {
+      startDate.setFullYear(today.getFullYear() - 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
       break;
-    default:
-      startDate.setDate(endDate.getDate() - 7);
+    }
+    default: {
+      const dayOfWeek = today.getDay();
+      const diffToMonday = (dayOfWeek + 6) % 7;
+      startDate.setDate(today.getDate() - diffToMonday);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+    }
   }
 
   return {
     startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0]
+    endDate: endDate.toISOString().split('T')[0],
   };
 };
 
