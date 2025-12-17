@@ -82,8 +82,11 @@ const getDateRange = (period) => {
       break;
     }
     case 'month': {
-      startDate.setMonth(today.getMonth() - 1);
+      // Calendar month: from the 1st of the current month to the last day of the same month
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
       startDate.setHours(0, 0, 0, 0);
+      // Last day of current month: month+1, day 0 trick
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       endDate.setHours(23, 59, 59, 999);
       break;
     }

@@ -77,7 +77,24 @@ const getMonthlyProgress = async (req, res) => {
     }, {});
 
     res.status(200).json({
-      monthlyReport: { period: { startDate: actualStartDate, endDate }, soberDays, totalDrinks, currentStreak: profile.current_streak, longestStreak: profile.longest_streak, totalDaysSober: profile.days_sober, tasksCompleted, tasksByCategory, pointsEarned, totalPoints: profile.total_points, currentLevel: profile.level_id, averageMood: parseFloat(averageMood.toFixed(2)), triggerCounts, moodLogsCount: moodLogsArray.length, triggerLogsCount: triggerLogsArray.length }
+      monthlyReport: {
+        period: { startDate: actualStartDate, endDate },
+        soberDays,
+        totalDrinks,
+        currentStreak: profile.current_streak,
+        longestStreak: profile.longest_streak,
+        totalDaysSober: profile.days_sober,
+        tasksCompleted,
+        tasksByCategory,
+        pointsEarned,
+        totalPoints: profile.total_points,
+        currentLevel: profile.level_id,
+        averageMood: parseFloat(averageMood.toFixed(2)),
+        triggerCounts,
+        moodLogsCount: moodLogsArray.length,
+        triggerLogsCount: triggerLogsArray.length,
+        drinkLogs: drinkLogsArray, // expose logs so frontend can build chart
+      }
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
