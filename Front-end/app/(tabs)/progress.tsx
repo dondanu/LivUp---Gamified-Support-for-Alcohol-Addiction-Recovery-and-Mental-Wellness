@@ -13,8 +13,189 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { DrinkLog, MoodLog, TriggerLog, UserBadge } from '@/types/database.types';
 import { TrendingUp, Award, Calendar, Sparkles } from 'lucide-react-native';
+import { useMemo } from 'react';
 
 const { width } = Dimensions.get('window');
+
+function LineChart90Days({
+  data,
+  lineMode,
+  onToggleMode,
+  lineTooltip,
+  setLineTooltip,
+}: {
+  data: { x: string; y: number }[];
+  lineMode: 'daily' | 'avg7';
+  onToggleMode: () => void;
+  lineTooltip: { label: string; value: number; x: number; y: number } | null;
+  setLineTooltip: (v: { label: string; value: number; x: number; y: number } | null) => void;
+}) {
+  const chartHeight = 180;
+  const chartWidth = width - 64;
+
+  const processedData = useMemo(() => {
+    if (lineMode !== 'avg7') return data;
+    // 7-day rolling average (includes current day and previous 6)
+    const window = 7;
+    const res: { x: string; y: number }[] = [];
+    for (let i = 0; i < data.length; i++) {
+      let sum = 0;
+      let count = 0;
+      for (let j = i - (window - 1); j <= i; j++) {
+        if (j >= 0 && j < data.length) {
+          sum += data[j].y;
+          count++;
+        }
+      }
+      res.push({ x: data[i].x, y: count ? sum / count : 0 });
+    }
+    return res;
+  }, [data, lineMode]);
+
+  const points = useMemo(() => {
+    const maxValue = Math.max(...processedData.map((d) => d.y), 1);
+    const stepX = processedData.length > 1 ? chartWidth / (processedData.length - 1) : 0;
+
+    return processedData.map((item, idx) => {
+      const yRatio = item.y / maxValue;
+      const yPos = chartHeight - yRatio * chartHeight;
+      const xPos = idx * stepX;
+      return { xPos, yPos, val: item.y, label: item.x };
+    });
+  }, [processedData, chartHeight, chartWidth]);
+
+  const handleTouch = (evt: any) => {
+    const touchX = evt.nativeEvent.locationX;
+    if (!points.length) return;
+    // find nearest point by x
+    let nearest = points[0];
+    let minDist = Math.abs(touchX - points[0].xPos);
+    for (let i = 1; i < points.length; i++) {
+      const d = Math.abs(touchX - points[i].xPos);
+      if (d < minDist) {
+        minDist = d;
+        nearest = points[i];
+      }
+    }
+    setLineTooltip({ label: nearest.label, value: nearest.val, x: nearest.xPos, y: nearest.yPos });
+  };
+
+  // Label every ~8–10 slots; always show first/last
+  const labelStep = Math.max(1, Math.round(points.length / 10));
+
+  const lineColor = lineMode === 'daily' ? '#44A08D' : '#8CE3DA';
+  const lineThickness = lineMode === 'daily' ? 2 : 3;
+
+  return (
+    <View>
+      <View style={styles.lineToggleRow}>
+        <TouchableOpacity style={styles.lineToggle} onPress={onToggleMode}>
+          <Text style={styles.lineToggleText}>
+            {lineMode === 'daily' ? 'Switch to 7-day Avg' : 'Switch to Daily'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View
+        style={styles.lineChartArea}
+        onStartShouldSetResponder={() => true}
+        onResponderRelease={handleTouch}>
+        {/* Line */}
+        {points.map((pt, idx) => {
+          if (idx === 0) return null;
+          const prev = points[idx - 1];
+          const dx = pt.xPos - prev.xPos;
+          const dy = pt.yPos - prev.yPos;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+          return (
+            <View
+              key={`line-${idx}`}
+              style={[
+                styles.lineSegment,
+                {
+                  left: prev.xPos,
+                  top: prev.yPos,
+                  width: length,
+                  height: lineThickness,
+                  backgroundColor: lineColor,
+                  transform: [{ rotateZ: `${angle}deg` }],
+                },
+              ]}
+            />
+          );
+        })}
+
+        {/* Optional subtle area fill */}
+        {points.map((pt, idx) => {
+          if (idx === 0) return null;
+          const prev = points[idx - 1];
+          return (
+            <View
+              key={`area-${idx}`}
+              style={[
+                styles.lineAreaFill,
+                {
+                  left: prev.xPos,
+                  width: pt.xPos - prev.xPos,
+                  top: Math.min(prev.yPos, pt.yPos),
+                  height: chartHeight - Math.min(prev.yPos, pt.yPos),
+                  opacity: 0.08,
+                  backgroundColor: lineColor,
+                },
+              ]}
+            />
+          );
+        })}
+
+        {/* Tooltip marker */}
+        {lineTooltip && (
+          <View
+            style={[
+              styles.linePointActive,
+              { left: lineTooltip.x - 5, top: lineTooltip.y - 5 },
+            ]}
+          />
+        )}
+
+        {/* Tooltip */}
+        {lineTooltip && (
+          <View
+            style={[
+              styles.tooltip,
+              {
+                left: Math.min(
+                  Math.max(lineTooltip.x - 40, 0),
+                  chartWidth - 80,
+                ),
+                top: Math.max(lineTooltip.y - 48, 4),
+              },
+            ]}>
+            <Text style={styles.tooltipTitle}>{lineTooltip.label}</Text>
+            <Text style={styles.tooltipValue}>{lineTooltip.value.toFixed(1)} drinks</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.xAxisLine} />
+      <View style={styles.labelsRow}>
+        {points.map((pt, index) => {
+          const showLabel =
+            points.length <= 10 ||
+            index === 0 ||
+            index === points.length - 1 ||
+            index % labelStep === 0;
+          return (
+            <View key={`label-${index}`} style={[styles.labelContainer, { left: pt.xPos - 8 }]}>
+              <Text style={styles.barLabel} numberOfLines={1}>
+                {showLabel ? pt.label : ''}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 
 export default function ProgressScreen() {
   const { profile } = useAuth();
@@ -25,6 +206,8 @@ export default function ProgressScreen() {
   const [soberDays, setSoberDays] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'all'>('week');
   const [xAxisLabel, setXAxisLabel] = useState('Date');
+  const [lineMode, setLineMode] = useState<'daily' | 'avg7'>('daily');
+  const [lineTooltip, setLineTooltip] = useState<{ label: string; value: number; x: number; y: number } | null>(null);
 
   useEffect(() => {
     loadProgressData();
@@ -262,6 +445,7 @@ export default function ProgressScreen() {
         const overallResponse = await api.getOverallProgress();
         const overall = overallResponse.overallProgress;
         setXAxisLabel('Date');
+        setLineMode('daily');
 
         // Set sober days from overall statistics
         setSoberDays(overall.statistics.soberDays || 0);
@@ -269,10 +453,11 @@ export default function ProgressScreen() {
         // For 90 days chart, fetch drink logs separately and fill in missing days
         try {
           const drinkLogsResponse = await api.getDrinkLogs();
-          const daysToFetch = 90;
+          // 90-day window: today (inclusive) back to today - 89 days
           const endDate = new Date();
-          const startDate = new Date();
-          startDate.setDate(startDate.getDate() - daysToFetch);
+          endDate.setHours(0, 0, 0, 0);
+          const startDate = new Date(endDate);
+          startDate.setDate(startDate.getDate() - 89);
           
           // Create a map of existing drink logs by date
           const drinkLogsMap = new Map<string, number>();
@@ -301,24 +486,23 @@ export default function ProgressScreen() {
             });
           }
 
-          // Fill in all days (sample every 3 days for 90 days to keep chart readable)
+          // Fill in all 90 days (no sampling) - always include today, even if 0
           const allDays: { x: string; y: number }[] = [];
           const currentDate = new Date(startDate);
-          let dayCount = 0;
-          while (currentDate <= endDate && dayCount < 30) {
-            // Sample every 3 days to show ~30 data points for 90 days
-            if (dayCount % 3 === 0 || dayCount === 0) {
-              const dateKey = currentDate.toISOString().split('T')[0];
-              const drinkCount = drinkLogsMap.get(dateKey) || 0;
-              allDays.push({
-                x: currentDate.getDate().toString(), // day number
-                y: drinkCount,
-              });
-            }
+          currentDate.setHours(0, 0, 0, 0);
+          const endDateObj = new Date(endDate);
+          endDateObj.setHours(23, 59, 59, 999);
+
+          while (currentDate <= endDateObj) {
+            const dateKey = currentDate.toISOString().split('T')[0];
+            const drinkCount = drinkLogsMap.get(dateKey) || 0;
+            allDays.push({
+              x: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              y: drinkCount,
+            });
             currentDate.setDate(currentDate.getDate() + 1);
-            dayCount++;
           }
-          
+
           setDrinkData(allDays);
         } catch (drinkError) {
           console.error('Error loading drink logs:', drinkError);
@@ -450,74 +634,98 @@ export default function ProgressScreen() {
 
           {drinkData.length > 0 ? (
             <View style={styles.chartContainer}>
-              {/* Y axis: drink count */}
-              <View style={styles.chartWithAxis}>
-                <View style={styles.yAxis}>
-                  {(() => {
-                    // Max drinks in this period, at least 1 so we always render axis
-                    const maxValue = Math.max(...drinkData.map((d) => d.y), 1);
-                    const maxInt = Math.ceil(maxValue);
+               {/* Y axis: drink count */}
+               <View style={styles.chartWithAxis}>
+                 <View style={styles.yAxis}>
+                   {(() => {
+                     // Max drinks in this period, at least 1 so we always render axis
+                     const maxValue = Math.max(...drinkData.map((d) => d.y), 1);
+                     const maxInt = Math.ceil(maxValue);
 
-                    // Use up to 5 ticks: max -> ... -> 0 (always include 0 at bottom)
-                    const ticks: number[] = [];
-                    if (maxInt <= 5) {
-                      for (let i = maxInt; i >= 0; i--) ticks.push(i);
-                    } else {
-                      const step = Math.max(1, Math.ceil(maxInt / 4));
-                      for (let v = maxInt; v >= 0; v -= step) {
-                        ticks.push(v);
-                      }
-                      if (ticks[ticks.length - 1] !== 0) ticks.push(0);
-                    }
+                     // Use up to 5 ticks: max -> ... -> 0 (always include 0 at bottom)
+                     const ticks: number[] = [];
+                     if (maxInt <= 5) {
+                       for (let i = maxInt; i >= 0; i--) ticks.push(i);
+                     } else {
+                       const step = Math.max(1, Math.ceil(maxInt / 4));
+                       for (let v = maxInt; v >= 0; v -= step) {
+                         ticks.push(v);
+                       }
+                       if (ticks[ticks.length - 1] !== 0) ticks.push(0);
+                     }
 
-                    return ticks.map((value, idx) => (
-                      <Text
-                        key={`${value}-${idx}`}
-                        style={[styles.yAxisLabel, idx === ticks.length - 1 && styles.yAxisZeroLabel]}>
-                        {value}
-                      </Text>
-                    ));
-                  })()}
-                  <View style={styles.yAxisTitleContainer}>
-                    <Text style={styles.yAxisTitle}>Drinks</Text>
-                  </View>
-                </View>
+                     return ticks.map((value, idx) => (
+                       <Text
+                         key={`${value}-${idx}`}
+                         style={[styles.yAxisLabel, idx === ticks.length - 1 && styles.yAxisZeroLabel]}>
+                         {value}
+                       </Text>
+                     ));
+                   })()}
+                   <View style={styles.yAxisTitleContainer}>
+                     <Text style={styles.yAxisTitle}>Drinks</Text>
+                   </View>
+                 </View>
 
-                {/* Bars with X axis (dates) */}
-                <View style={styles.chart}>
-                  {drinkData.map((item, index) => {
-                    const maxValue = Math.max(...drinkData.map((d) => d.y), 1);
-                    const barHeight =
-                      maxValue > 0
-                        ? Math.max((item.y / maxValue) * 150, item.y > 0 ? 4 : 0)
-                        : 0;
+                 {/* Chart area: bars for week/month, line for 90 days */}
+                 <View style={styles.barsAndLabels}>
+                   {selectedPeriod === 'all' ? (
+                     <LineChart90Days
+                       data={drinkData}
+                       lineMode={lineMode}
+                       onToggleMode={() => setLineMode((m) => (m === 'daily' ? 'avg7' : 'daily'))}
+                       lineTooltip={lineTooltip}
+                       setLineTooltip={setLineTooltip}
+                     />
+                   ) : (
+                     <>
+                       <View style={styles.chart}>
+                         {drinkData.map((item, index) => {
+                           const maxValue = Math.max(...drinkData.map((d) => d.y), 1);
+                           const barHeight =
+                             maxValue > 0
+                               ? Math.max((item.y / maxValue) * 150, item.y > 0 ? 4 : 0)
+                               : 0;
 
-                    // Show fewer x-labels to avoid crowding
-                    const labelStep = Math.max(1, Math.ceil(drinkData.length / 8));
-                    const showLabel =
-                      drinkData.length <= 10 ||
-                      index === 0 ||
-                      index === drinkData.length - 1 ||
-                      index % labelStep === 0;
+                           return (
+                             <View key={index} style={styles.barContainer}>
+                               <View style={styles.barWrapper}>
+                                 <LinearGradient
+                                   colors={['#4ECDC4', '#44A08D']}
+                                   style={[styles.bar, { height: barHeight || 4 }]}
+                                   start={{ x: 0, y: 0 }}
+                                   end={{ x: 1, y: 1 }}
+                                 />
+                               </View>
+                             </View>
+                           );
+                         })}
+                       </View>
 
-                    return (
-                      <View key={index} style={styles.barContainer}>
-                        <View style={styles.barWrapper}>
-                          <LinearGradient
-                            colors={['#4ECDC4', '#44A08D']}
-                            style={[styles.bar, { height: barHeight || 4 }]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                          />
-                        </View>
-                        <Text style={styles.barLabel} numberOfLines={1}>
-                          {showLabel ? item.x : ''}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
+                       <View style={styles.xAxisLine} />
+
+                       <View style={styles.labelsRow}>
+                         {drinkData.map((item, index) => {
+                           const labelStep = Math.max(1, Math.ceil(drinkData.length / 8));
+                           const showLabel =
+                             drinkData.length <= 10 ||
+                             index === 0 ||
+                             index === drinkData.length - 1 ||
+                             index % labelStep === 0;
+
+                           return (
+                             <View key={`label-${index}`} style={styles.labelContainer}>
+                               <Text style={styles.barLabel} numberOfLines={1}>
+                                 {showLabel ? item.x : ''}
+                               </Text>
+                             </View>
+                           );
+                         })}
+                       </View>
+                     </>
+                   )}
+                 </View>
+               </View>
               <Text style={styles.xAxisTitle}>{xAxisLabel}</Text>
             </View>
           ) : (
@@ -714,19 +922,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
   },
+  barsAndLabels: {
+    flex: 1,
+  },
+  lineChartArea: {
+    height: 200,
+    position: 'relative',
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
+  },
+  lineSegment: {
+    position: 'absolute',
+    height: 2,
+    backgroundColor: '#44A08D',
+    borderRadius: 2,
+  },
+  linePoint: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ECDC4',
+  },
+  linePointActive: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#4ECDC4',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  lineAreaFill: {
+    position: 'absolute',
+    backgroundColor: '#4ECDC4',
+  },
   yAxis: {
-    width: 32,
-    marginRight: 8,
+    width: 34,
+    marginRight: 4,
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     height: 180,
+    paddingTop: 6, // nudge axis start slightly downward
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    paddingRight: 5, // space between labels and axis line
+    marginBottom: 21,
   },
   yAxisLabel: {
     fontSize: 10,
     color: '#7F8C8D',
   },
   yAxisZeroLabel: {
-    marginTop: 4,
+    marginTop: 0,
+    marginBottom: -1,
   },
   yAxisTitleContainer: {
     position: 'absolute',
@@ -735,7 +984,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-90deg' }],
   },
   yAxisTitle: {
-    fontSize: 11,
+    fontSize: 9.5,
     color: '#2C3E50',
     fontWeight: '600',
   },
@@ -745,7 +994,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     height: 200,
     paddingHorizontal: 8,
+    marginHorizontal: -8, // extend x-axis line slightly beyond bars
     flex: 1,
+  },
+  xAxisLine: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: -5,
+    marginTop: 8, // nudge line slightly down toward labels
   },
   xAxisTitle: {
     marginTop: 8,
@@ -753,6 +1009,50 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  labelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-start',
+    paddingHorizontal: 8,
+    marginHorizontal: -8,
+  },
+  lineToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 8,
+  },
+  lineToggle: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#F0F4F7',
+    borderRadius: 8,
+  },
+  lineToggleText: {
+    fontSize: 12,
+    color: '#2C3E50',
+    fontWeight: '600',
+  },
+  tooltip: {
+    position: 'absolute',
+    backgroundColor: '#2C3E50',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  tooltipTitle: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  tooltipValue: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  labelContainer: {
+    flex: 1,
+    alignItems: 'center',
   },
   barContainer: {
     flex: 1,
