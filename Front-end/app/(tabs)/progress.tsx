@@ -23,34 +23,46 @@ function LineChart90Days({
   onToggleMode,
   lineTooltip,
   setLineTooltip,
+  page,
+  pageSize,
+  onPageChange,
 }: {
   data: { x: string; y: number }[];
   lineMode: 'daily' | 'avg7';
   onToggleMode: () => void;
   lineTooltip: { label: string; value: number; x: number; y: number } | null;
   setLineTooltip: (v: { label: string; value: number; x: number; y: number } | null) => void;
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
 }) {
   const chartHeight = 180;
   const chartWidth = width - 64;
 
+  const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
+  const clampedPage = Math.min(Math.max(page, 0), totalPages - 1);
+  const startIndex = clampedPage * pageSize;
+  const endIndex = startIndex + pageSize;
+  const windowData = data.slice(startIndex, endIndex);
+
   const processedData = useMemo(() => {
-    if (lineMode !== 'avg7') return data;
+    if (lineMode !== 'avg7') return windowData;
     // 7-day rolling average (includes current day and previous 6)
     const window = 7;
     const res: { x: string; y: number }[] = [];
-    for (let i = 0; i < data.length; i++) {
+    for (let i = 0; i < windowData.length; i++) {
       let sum = 0;
       let count = 0;
       for (let j = i - (window - 1); j <= i; j++) {
-        if (j >= 0 && j < data.length) {
-          sum += data[j].y;
+        if (j >= 0 && j < windowData.length) {
+          sum += windowData[j].y;
           count++;
         }
       }
-      res.push({ x: data[i].x, y: count ? sum / count : 0 });
+      res.push({ x: windowData[i].x, y: count ? sum / count : 0 });
     }
     return res;
-  }, [data, lineMode]);
+  }, [windowData, lineMode]);
 
   const points = useMemo(() => {
     const maxValue = Math.max(...processedData.map((d) => d.y), 1);
@@ -94,6 +106,18 @@ function LineChart90Days({
             {lineMode === 'daily' ? 'Switch to 7-day Avg' : 'Switch to Daily'}
           </Text>
         </TouchableOpacity>
+      </View>
+      {/* simple page indicator */}
+      <View style={styles.linePageDotsRow}>
+        {Array.from({ length: totalPages }).map((_, idx) => (
+          <View
+            key={idx}
+            style={[
+              styles.linePageDot,
+              idx === clampedPage && styles.linePageDotActive,
+            ]}
+          />
+        ))}
       </View>
       <View
         style={styles.lineChartArea}
@@ -208,6 +232,8 @@ export default function ProgressScreen() {
   const [xAxisLabel, setXAxisLabel] = useState('Date');
   const [lineMode, setLineMode] = useState<'daily' | 'avg7'>('daily');
   const [lineTooltip, setLineTooltip] = useState<{ label: string; value: number; x: number; y: number } | null>(null);
+  // For 90‑day chart: which 9‑day window is visible (0–9)
+  const [ninetyDayPage, setNinetyDayPage] = useState(0);
 
   useEffect(() => {
     loadProgressData();
@@ -446,6 +472,7 @@ export default function ProgressScreen() {
         const overall = overallResponse.overallProgress;
         setXAxisLabel('Date');
         setLineMode('daily');
+        setNinetyDayPage(0);
 
         // Set sober days from overall statistics
         setSoberDays(overall.statistics.soberDays || 0);
@@ -453,11 +480,20 @@ export default function ProgressScreen() {
         // For 90 days chart, fetch drink logs separately and fill in missing days
         try {
           const drinkLogsResponse = await api.getDrinkLogs();
-          // 90-day window: today (inclusive) back to today - 89 days
+          // 90-day window: today (inclusive) back to today - 89 days,
+          // but never before the user's registration date
           const endDate = new Date();
           endDate.setHours(0, 0, 0, 0);
-          const startDate = new Date(endDate);
-          startDate.setDate(startDate.getDate() - 89);
+          const rawStartDate = new Date(endDate);
+          rawStartDate.setDate(rawStartDate.getDate() - 89);
+
+          const registrationDate = profile?.created_at ? new Date(profile.created_at) : null;
+          if (registrationDate) {
+            registrationDate.setHours(0, 0, 0, 0);
+          }
+
+          const startDate =
+            registrationDate && registrationDate > rawStartDate ? registrationDate : rawStartDate;
           
           // Create a map of existing drink logs by date
           const drinkLogsMap = new Map<string, number>();
@@ -669,14 +705,17 @@ export default function ProgressScreen() {
 
                  {/* Chart area: bars for week/month, line for 90 days */}
                  <View style={styles.barsAndLabels}>
-                   {selectedPeriod === 'all' ? (
-                     <LineChart90Days
-                       data={drinkData}
-                       lineMode={lineMode}
-                       onToggleMode={() => setLineMode((m) => (m === 'daily' ? 'avg7' : 'daily'))}
-                       lineTooltip={lineTooltip}
-                       setLineTooltip={setLineTooltip}
-                     />
+                  {selectedPeriod === 'all' ? (
+                    <LineChart90Days
+                      data={drinkData}
+                      lineMode={lineMode}
+                      onToggleMode={() => setLineMode((m) => (m === 'daily' ? 'avg7' : 'daily'))}
+                      lineTooltip={lineTooltip}
+                      setLineTooltip={setLineTooltip}
+                      page={ninetyDayPage}
+                      pageSize={9}
+                      onPageChange={setNinetyDayPage}
+                    />
                    ) : (
                      <>
                        <View style={styles.chart}>
@@ -1032,6 +1071,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2C3E50',
     fontWeight: '600',
+  },
+  linePageDotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  linePageDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#D2D6DC',
+    marginHorizontal: 2,
+  },
+  linePageDotActive: {
+    backgroundColor: '#44A08D',
   },
   tooltip: {
     position: 'absolute',
