@@ -201,17 +201,28 @@ function LineChart90Days({
       </View>
 
       <View style={styles.xAxisLine} />
-      <View style={styles.labelsRow}>
+      <View style={[styles.labelsRow, styles.lineLabelsRow]}>
         {points.map((pt, index) => {
           const showLabel =
             points.length <= 10 ||
             index === 0 ||
             index === points.length - 1 ||
             index % labelStep === 0;
+          if (!showLabel) return null;
+          // Center label on point, but keep within bounds
+          const labelWidth = 60;
+          const labelLeft = Math.max(4, Math.min(pt.xPos - labelWidth / 2, chartWidth - labelWidth - 4));
           return (
-            <View key={`label-${index}`} style={[styles.labelContainer, { left: pt.xPos - 8 }]}>
-              <Text style={styles.barLabel} numberOfLines={1}>
-                {showLabel ? pt.label : ''}
+            <View
+              key={`label-${index}`}
+              style={[
+                styles.lineLabelContainer,
+                {
+                  left: labelLeft,
+                },
+              ]}>
+              <Text style={styles.barLabel} numberOfLines={1} ellipsizeMode="tail">
+                {pt.label}
               </Text>
             </View>
           );
@@ -1056,6 +1067,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     marginHorizontal: -8,
   },
+  lineLabelsRow: {
+    position: 'relative',
+    height: 30,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 0,
+    marginHorizontal: 0,
+  },
   lineToggleRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -1107,6 +1125,13 @@ const styles = StyleSheet.create({
   labelContainer: {
     flex: 1,
     alignItems: 'center',
+  },
+  lineLabelContainer: {
+    position: 'absolute',
+    width: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
   },
   barContainer: {
     flex: 1,
