@@ -27,7 +27,7 @@ function LineChart90Days({
   pageSize,
   onPageChange,
 }: {
-  data: { x: string; y: number }[];
+  data: { x: string; y: number; fullDate?: string }[];
   lineMode: 'daily' | 'avg7';
   onToggleMode: () => void;
   lineTooltip: { label: string; value: number; x: number; y: number } | null;
@@ -49,7 +49,7 @@ function LineChart90Days({
     if (lineMode !== 'avg7') return windowData;
     // 7-day rolling average (includes current day and previous 6)
     const window = 7;
-    const res: { x: string; y: number }[] = [];
+    const res: { x: string; y: number; fullDate?: string }[] = [];
     for (let i = 0; i < windowData.length; i++) {
       let sum = 0;
       let count = 0;
@@ -59,7 +59,11 @@ function LineChart90Days({
           count++;
         }
       }
-      res.push({ x: windowData[i].x, y: count ? sum / count : 0 });
+      res.push({ 
+        x: windowData[i].x, 
+        y: count ? sum / count : 0,
+        fullDate: windowData[i].fullDate 
+      });
     }
     return res;
   }, [windowData, lineMode]);
@@ -72,7 +76,8 @@ function LineChart90Days({
       const yRatio = item.y / maxValue;
       const yPos = chartHeight - yRatio * chartHeight;
       const xPos = idx * stepX;
-      return { xPos, yPos, val: item.y, label: item.x };
+      // Use fullDate for tooltip, x (day number) for X-axis label
+      return { xPos, yPos, val: item.y, label: item.x, tooltipLabel: item.fullDate || item.x };
     });
   }, [processedData, chartHeight, chartWidth]);
 
@@ -89,11 +94,14 @@ function LineChart90Days({
         nearest = points[i];
       }
     }
-    setLineTooltip({ label: nearest.label, value: nearest.val, x: nearest.xPos, y: nearest.yPos });
+    // Use tooltipLabel (full date) for tooltip, but label (day number) for X-axis
+    setLineTooltip({ label: nearest.tooltipLabel || nearest.label, value: nearest.val, x: nearest.xPos, y: nearest.yPos });
   };
 
   // Label every ~8–10 slots; always show first/last
-  const labelStep = Math.max(1, Math.round(points.length / 10));
+  // Adjust based on chart width to prevent crowding
+  const maxLabels = Math.floor(chartWidth / 35); // ~35px per label (28px width + 7px spacing)
+  const labelStep = Math.max(1, Math.round(points.length / Math.min(maxLabels, 10)));
 
   const lineColor = lineMode === 'daily' ? '#44A08D' : '#8CE3DA';
   const lineThickness = lineMode === 'daily' ? 2 : 3;
@@ -202,31 +210,83 @@ function LineChart90Days({
 
       <View style={styles.xAxisLine} />
       <View style={[styles.labelsRow, styles.lineLabelsRow]}>
-        {points.map((pt, index) => {
-          const showLabel =
-            points.length <= 10 ||
-            index === 0 ||
-            index === points.length - 1 ||
-            index % labelStep === 0;
-          if (!showLabel) return null;
-          // Center label on point, but keep within bounds
-          const labelWidth = 60;
-          const labelLeft = Math.max(4, Math.min(pt.xPos - labelWidth / 2, chartWidth - labelWidth - 4));
-          return (
+        {(() => {
+          // First, collect all labels that should be shown
+          const labelsToShow: Array<{ index: number; xPos: number; label: string }> = [];
+          points.forEach((pt, index) => {
+            const showLabel =
+              points.length <= 10 ||
+              index === 0 ||
+              index === points.length - 1 ||
+              index % labelStep === 0;
+            if (showLabel) {
+              labelsToShow.push({ index, xPos: pt.xPos, label: pt.label });
+            }
+          });
+
+          // Calculate positions with proper spacing (build iteratively)
+          const labelWidth = 28;
+          const minSpacing = 4; // minimum space between labels
+          const leftBound = 4;
+          // Labels row now matches chart area width (both have marginHorizontal: -8)
+          const rightBound = chartWidth - labelWidth - 4;
+          const positionedLabels: Array<{ index: number; xPos: number; label: string; left: number }> = [];
+          
+          // Filter out labels that are too close to the right edge before positioning
+          const validLabels = labelsToShow.filter((item, idx) => {
+            // Always keep first and last labels
+            if (idx === 0 || idx === labelsToShow.length - 1) return true;
+            // For middle labels, check if they fit
+            const idealLeft = item.xPos - labelWidth / 2;
+            return idealLeft + labelWidth <= rightBound + 10; // Allow some margin
+          });
+          
+          validLabels.forEach((item, idx) => {
+            // Start with ideal centered position
+            let labelLeft = item.xPos - labelWidth / 2;
+            
+            // Prevent overlap with previous label
+            if (idx > 0) {
+              const prevLeft = positionedLabels[idx - 1].left;
+              const prevRight = prevLeft + labelWidth;
+              if (labelLeft < prevRight + minSpacing) {
+                labelLeft = prevRight + minSpacing;
+              }
+            }
+            
+            // Ensure left boundary
+            labelLeft = Math.max(leftBound, labelLeft);
+            
+            // Critical: Ensure right boundary - especially for last label
+            if (labelLeft + labelWidth > rightBound) {
+              // If it's the last label, position it at the right edge
+              if (idx === validLabels.length - 1) {
+                labelLeft = rightBound;
+              } else {
+                // For middle labels, clamp to right boundary
+                labelLeft = rightBound;
+              }
+            }
+            
+            positionedLabels.push({ ...item, left: labelLeft });
+          });
+
+          return positionedLabels.map((item) => (
             <View
-              key={`label-${index}`}
+              key={`label-${item.index}`}
               style={[
                 styles.lineLabelContainer,
                 {
-                  left: labelLeft,
+                  left: item.left,
+                  width: labelWidth,
                 },
               ]}>
               <Text style={styles.barLabel} numberOfLines={1} ellipsizeMode="tail">
-                {pt.label}
+                {item.label}
               </Text>
             </View>
-          );
-        })}
+          ));
+        })()}
       </View>
     </View>
   );
@@ -235,7 +295,7 @@ function LineChart90Days({
 export default function ProgressScreen() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [drinkData, setDrinkData] = useState<{ x: string; y: number }[]>([]);
+  const [drinkData, setDrinkData] = useState<{ x: string; y: number; fullDate?: string }[]>([]);
   const [triggerCounts, setTriggerCounts] = useState<{ [key: string]: number }>({});
   const [totalBadges, setTotalBadges] = useState(0);
   const [soberDays, setSoberDays] = useState(0);
@@ -534,7 +594,7 @@ export default function ProgressScreen() {
           }
 
           // Fill in all 90 days (no sampling) - always include today, even if 0
-          const allDays: { x: string; y: number }[] = [];
+          const allDays: { x: string; y: number; fullDate?: string }[] = [];
           const currentDate = new Date(startDate);
           currentDate.setHours(0, 0, 0, 0);
           const endDateObj = new Date(endDate);
@@ -544,8 +604,9 @@ export default function ProgressScreen() {
             const dateKey = currentDate.toISOString().split('T')[0];
             const drinkCount = drinkLogsMap.get(dateKey) || 0;
             allDays.push({
-              x: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              x: currentDate.getDate().toString(), // show day number only for X-axis
               y: drinkCount,
+              fullDate: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), // full date for tooltip
             });
             currentDate.setDate(currentDate.getDate() + 1);
           }
@@ -1072,7 +1133,7 @@ const styles = StyleSheet.create({
     height: 30,
     justifyContent: 'flex-start',
     paddingHorizontal: 0,
-    marginHorizontal: 0,
+    marginHorizontal: -8, // Match lineChartArea margin to align widths
   },
   lineToggleRow: {
     flexDirection: 'row',
@@ -1128,7 +1189,7 @@ const styles = StyleSheet.create({
   },
   lineLabelContainer: {
     position: 'absolute',
-    width: 60,
+    width: 28,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 2,
