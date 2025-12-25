@@ -227,18 +227,21 @@ function LineChart90Days({
           // Calculate positions with proper spacing (build iteratively)
           const labelWidth = 28;
           const minSpacing = 4; // minimum space between labels
-          const leftBound = 4;
-          // Labels row now matches chart area width (both have marginHorizontal: -8)
-          const rightBound = chartWidth - labelWidth - 4;
+          const leftBound = 8; // Account for margin
+          // Very conservative rightBound to ensure labels stay within visible area
+          // chartWidth is width - 64, labelsRow has marginHorizontal: -8
+          // So effective width is chartWidth + 16, but we need to account for container constraints
+          // Use a very conservative margin to ensure no overflow
+          const rightBound = chartWidth - labelWidth - 20; // Very conservative to prevent any overflow
           const positionedLabels: Array<{ index: number; xPos: number; label: string; left: number }> = [];
           
           // Filter out labels that are too close to the right edge before positioning
           const validLabels = labelsToShow.filter((item, idx) => {
             // Always keep first and last labels
             if (idx === 0 || idx === labelsToShow.length - 1) return true;
-            // For middle labels, check if they fit
+            // For middle labels, check if they fit with proper margin
             const idealLeft = item.xPos - labelWidth / 2;
-            return idealLeft + labelWidth <= rightBound + 10; // Allow some margin
+            return idealLeft + labelWidth <= rightBound;
           });
           
           validLabels.forEach((item, idx) => {
@@ -257,14 +260,27 @@ function LineChart90Days({
             // Ensure left boundary
             labelLeft = Math.max(leftBound, labelLeft);
             
-            // Critical: Ensure right boundary - especially for last label
-            if (labelLeft + labelWidth > rightBound) {
-              // If it's the last label, position it at the right edge
-              if (idx === validLabels.length - 1) {
-                labelLeft = rightBound;
-              } else {
-                // For middle labels, clamp to right boundary
-                labelLeft = rightBound;
+            // Critical: Ensure right boundary - clamp ALL labels to stay within bounds
+            // For the last label, be extra conservative
+            if (idx === validLabels.length - 1) {
+              // Last label: ensure it's fully within bounds
+              if (labelLeft + labelWidth > rightBound) {
+                labelLeft = rightBound - labelWidth;
+              }
+              // Double-check: ensure it doesn't go below leftBound
+              labelLeft = Math.max(leftBound, labelLeft);
+            } else {
+              // For other labels, clamp to rightBound
+              if (labelLeft + labelWidth > rightBound) {
+                labelLeft = rightBound - labelWidth;
+              }
+            }
+            
+            // Final safety check: skip middle labels that still don't fit
+            if (idx > 0 && idx < validLabels.length - 1) {
+              if (labelLeft + labelWidth > rightBound) {
+                // Skip this label if it doesn't fit
+                return;
               }
             }
             
