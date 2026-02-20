@@ -7,7 +7,7 @@
 
 import { Platform } from 'react-native';
 
-let Config: { API_BASE_URL?: string } = {};
+let Config: { API_BASE_URL?: string; DEV_SERVER_IP?: string } = {};
 try {
   Config = require('react-native-config').default || {};
 } catch (e) {
@@ -16,6 +16,10 @@ try {
 
 // Get base URL from environment variable, or use platform-specific default
 const getDefaultBaseURL = () => {
+  // Use environment variable for developer's IP address
+  const devServerIP = Config.DEV_SERVER_IP || '192.168.0.111';
+  const port = '3000';
+  
   if (Platform.OS === 'android') {
     // Check if running on emulator or physical device
     const isEmulator = Platform.constants?.Brand === 'google' || 
@@ -25,18 +29,17 @@ const getDefaultBaseURL = () => {
     
     if (isEmulator) {
       // Android Emulator uses 10.0.2.2 to access host machine's localhost
-      return 'http://10.0.2.2:3000/api';
+      return `http://10.0.2.2:${port}/api`;
     } else {
-      // Physical device - replace with your computer's IP address
-      // Find your IP: Run 'ipconfig' in cmd and look for IPv4 Address
-      return 'http://192.168.0.111:3000/api';  // e.g., 'http://192.168.1.105:3000/api'
+      // Physical device - uses DEV_SERVER_IP from environment
+      return `http://${devServerIP}:${port}/api`;
     }
   } else if (Platform.OS === 'ios') {
     // iOS Simulator can use localhost
-    return 'http://localhost:3000/api';
+    return `http://localhost:${port}/api`;
   } else {
     // Default fallback
-    return 'http://192.168.0.111:3000/api';
+    return `http://${devServerIP}:${port}/api`;
   }
 };
 
