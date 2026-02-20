@@ -69,8 +69,44 @@ const queryOne = async (sql, params = []) => {
   return { data: data && data.length > 0 ? data[0] : null, error: null };
 };
 
+// Helper function to execute queries within a transaction
+const transaction = async (callback) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    // Provide transaction-aware query functions
+    const txQuery = async (sql, params = []) => {
+      try {
+        const [results] = await connection.execute(sql, params);
+        return { data: results, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    };
+    
+    const txQueryOne = async (sql, params = []) => {
+      const { data, error } = await txQuery(sql, params);
+      if (error) return { data: null, error };
+      return { data: data && data.length > 0 ? data[0] : null, error: null };
+    };
+    
+    // Execute the callback with transaction-aware functions
+    const result = await callback({ query: txQuery, queryOne: txQueryOne });
+    
+    await connection.commit();
+    return { data: result, error: null };
+  } catch (error) {
+    await connection.rollback();
+    return { data: null, error };
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   pool,
   query,
-  queryOne
+  queryOne,
+  transaction
 };
