@@ -2,45 +2,22 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar, Platform, ErrorUtils, LogBox } from 'react-native';
+import { StatusBar, Platform, LogBox } from 'react-native';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Home, Activity, TrendingUp, Target, User } from 'lucide-react-native';
+import ErrorBoundary from './components/ErrorBoundary';
 import 'react-native-gesture-handler';
 
-// Suppress all error displays - errors are logged but not shown to users
-try {
-  if (ErrorUtils && typeof ErrorUtils.getGlobalHandler === 'function') {
-    const originalErrorHandler = ErrorUtils.getGlobalHandler();
-    ErrorUtils.setGlobalHandler((error, isFatal) => {
-      // Log error to console for debugging, but don't show to user
-      console.error('Global error (suppressed from UI):', error);
-      // Don't call original handler to prevent error display
-    });
-  }
-} catch (error) {
-  // ErrorUtils might not be available - silently continue
-  console.log('ErrorUtils not available');
-}
-
-// Disable LogBox to prevent error toasts/overlays
-try {
-  if (LogBox && typeof LogBox.ignoreAllLogs === 'function') {
-    LogBox.ignoreAllLogs(true);
-    LogBox.ignoreLogs([
-      'The action \'RESET\'',
-      'was not handled by any navigator',
-      'Non-serializable values were found',
-      'Warning:',
-      'Error:',
-      'NavigationContainer',
-    ]);
-  }
-} catch (error) {
-  // LogBox might not be available - silently continue
-  console.log('LogBox not available');
+// Only ignore specific known warnings, not all errors
+if (__DEV__) {
+  LogBox.ignoreLogs([
+    'Non-serializable values were found in the navigation state',
+    'Sending `onAnimatedValueUpdate` with no listeners registered',
+  ]);
 }
 
 // Screens
+import IntroScreen from './app/intro';
 import LoginScreen from './app/(auth)/login';
 import RegisterScreen from './app/(auth)/register';
 import HomeScreen from './app/(tabs)/index';
@@ -136,13 +113,7 @@ function RootNavigator() {
   return (
     <Stack.Navigator 
       key={user ? 'authenticated' : 'unauthenticated'}
-      screenOptions={{ headerShown: false }}
-      screenListeners={{
-        // Suppress navigation errors
-        beforeRemove: () => {
-          // Prevent navigation errors from showing
-        },
-      }}>
+      screenOptions={{ headerShown: false }}>
       {user ? (
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
@@ -164,7 +135,10 @@ function RootNavigator() {
           />
         </>
       ) : (
-        <Stack.Screen name="Auth" component={AuthNavigator} />
+        <>
+          <Stack.Screen name="Intro" component={IntroScreen} />
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        </>
       )}
       <Stack.Screen name="NotFound" component={NotFoundScreen} />
     </Stack.Navigator>
@@ -173,23 +147,14 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <NavigationContainer
-        onReady={() => {
-          // Suppress navigation errors
-        }}
-        onStateChange={() => {
-          // Suppress navigation state change errors
-        }}
-        onUnhandledAction={(action) => {
-          // Silently handle unhandled navigation actions (like RESET on signout)
-          console.log('Unhandled navigation action (suppressed):', action.type);
-          return true; // Return true to indicate we handled it
-        }}>
-        <StatusBar barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'} />
-        <RootNavigator />
-      </NavigationContainer>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <NavigationContainer>
+          <StatusBar barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'} />
+          <RootNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
