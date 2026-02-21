@@ -45,17 +45,24 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    if (error.response) {
-      // Server responded with error
-      console.error(`[API Error] ${error.response.status} ${error.config?.url}`);
-      console.error('[API Error Data]', JSON.stringify(error.response.data, null, 2));
-    } else if (error.request) {
-      // Request made but no response
-      console.error('[API Error] No response received', error.request);
-    } else {
-      // Error setting up request
-      console.error('[API Error]', error.message);
+    const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
+    
+    // Handle 503 Service Unavailable with retry
+    if (error.response?.status === 503 && config && !config._retryCount) {
+      const retryAfter = (error.response.data as any)?.retryAfter || 5;
+      console.log(`[API] Service unavailable, retrying after ${retryAfter}s...`);
+      
+      config._retryCount = 1;
+      
+      // Wait for the specified retry-after duration
+      await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+      
+      // Retry the request
+      return apiClient.request(config);
     }
+    
+    // Don't log errors to console to avoid showing error notifications in development mode
+    // Errors are handled by the calling code
     
     if (error.response?.status === 401) {
       // Token expired or invalid - clear token
