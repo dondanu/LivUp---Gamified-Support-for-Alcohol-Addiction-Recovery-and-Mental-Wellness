@@ -113,8 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (error: any) {
-      console.error('Sign up error:', error);
-      
       // Extract error message from Axios error response
       let errorMessage = 'Failed to sign up';
       
@@ -151,8 +149,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      
       // Extract error message from Axios error response
       let errorMessage = 'Failed to sign in';
       
@@ -200,8 +196,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (error: any) {
-      console.error('Anonymous sign in error:', error);
-      
       // Extract error message from Axios error response
       let errorMessage = 'Failed to sign in anonymously';
       if (error.response?.data?.error) {
