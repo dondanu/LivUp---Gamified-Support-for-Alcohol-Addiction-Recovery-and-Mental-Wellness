@@ -1,33 +1,80 @@
 const { query, queryOne } = require('../config/database');
+const { verifyTableExists } = require('../utils/tableVerification');
 
 const getDailyTasks = async (req, res) => {
   try {
+    // Validate and sanitize parameters
     const { category, limit = 20 } = req.query;
-    // Get all tasks first, then filter in code to handle any is_active format
+    
+    // Validate limit parameter
+    const limitValue = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
+    
+    // Validate category parameter if provided
+    if (category && (typeof category !== 'string' || category.trim().length === 0)) {
+      return res.status(400).json({ 
+        error: 'Invalid category parameter',
+        message: 'Category must be a non-empty string'
+      });
+    }
+    
+    // Verify table exists
+    const tableExists = await verifyTableExists('daily_tasks');
+    if (!tableExists) {
+      console.error('[Tasks] daily_tasks table does not exist');
+      return res.status(503).json({
+        error: 'Database not ready',
+        message: 'The challenges system is initializing. Please try again in a moment.',
+        retryAfter: 10
+      });
+    }
+    
+    // Build query
     let sql = 'SELECT * FROM daily_tasks';
     const params = [];
 
     if (category) {
       sql += ' WHERE category = ?';
-      params.push(category);
+      params.push(category.trim());
     }
 
-    const limitValue = parseInt(limit) || 100;
-    // Use template literal for LIMIT to avoid parameter binding issues
+    // Note: LIMIT cannot be parameterized with mysql2, so we use string interpolation
+    // limitValue is already sanitized (clamped between 1-100)
     sql += ` ORDER BY points_reward DESC LIMIT ${limitValue}`;
 
     console.log(`[Tasks] Executing query: ${sql}`, `Params: [${params.join(', ')}]`);
+    
     const result = await query(sql, params);
     const { data, error } = result;
     
     if (error) {
-      console.error('[Tasks] Query error:', error);
-      return res.status(500).json({ error: 'Database query failed', details: error.message });
+      console.error('[Tasks] Query error:', {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        sql: error.sql,
+        sqlState: error.sqlState,
+        sqlMessage: error.sqlMessage,
+        stack: error.stack
+      });
+      
+      return res.status(500).json({ 
+        error: 'Database query failed', 
+        message: 'Failed to retrieve challenges. Please try again.',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
     
     if (!data) {
-      console.error('[Tasks] Query returned null/undefined data');
-      return res.status(500).json({ error: 'Database query returned no data' });
+      console.error('[Tasks] Query returned null/undefined data', {
+        sql,
+        params,
+        result
+      });
+      return res.status(500).json({ 
+        error: 'Database query returned no data',
+        message: 'An unexpected error occurred. Please try again.',
+        details: process.env.NODE_ENV === 'development' ? 'Query returned null/undefined' : undefined
+      });
     }
     
     console.log(`[Tasks] Raw data from query: Array of ${data.length} items`);
@@ -69,7 +116,16 @@ const getDailyTasks = async (req, res) => {
     console.log(`[Tasks] Returning ${tasks.length} unique challenges`);
     res.status(200).json({ tasks, challenges: tasks, count: tasks.length });
   } catch (error) {
-    res.status(500).json({ error: 'Server error', details: error.message });
+    console.error('[Tasks] Unexpected error in getDailyTasks:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    res.status(500).json({ 
+      error: 'Server error', 
+      message: 'An unexpected error occurred. Please try again.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -133,8 +189,9 @@ const getUserCompletedTasks = async (req, res) => {
       params.push(endDate);
     }
 
+    const limitValue = Math.min(Math.max(parseInt(limit) || 50, 1), 100); // Sanitize: between 1-100
     sql += ' ORDER BY udt.completion_date DESC LIMIT ?';
-    params.push(parseInt(limit));
+    params.push(limitValue);
 
     const { data } = await query(sql, params);
     res.status(200).json({ completedTasks: data || [], count: (data || []).length });
