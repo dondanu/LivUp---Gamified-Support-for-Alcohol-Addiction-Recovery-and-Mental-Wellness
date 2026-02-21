@@ -88,7 +88,6 @@ export default function ChallengesScreen() {
           setTodayPoints(todayResponse.totalPointsEarnedToday || 0);
           console.log('[Challenges] Today completed:', completedToday.length);
         } catch (error) {
-          console.error('[Challenges] Error loading today\'s tasks:', error);
           setUserChallenges([]);
           setTodayPoints(0);
         }
@@ -96,8 +95,28 @@ export default function ChallengesScreen() {
         console.warn('[Challenges] No challenges in response:', challengesResponse);
         setChallenges([]);
       }
-    } catch (error) {
-      console.error('[Challenges] Error loading challenges:', error);
+    } catch (error: any) {
+      // Show user-friendly error message
+      if (error.response?.status === 503) {
+        Alert.alert(
+          'System Starting Up',
+          'The challenges system is initializing. Please try again in a moment.',
+          [{ text: 'Retry', onPress: () => loadChallenges() }]
+        );
+      } else if (error.response?.status === 500) {
+        Alert.alert(
+          'Unable to Load Challenges',
+          'We\'re experiencing technical difficulties. Please try again later.',
+          [{ text: 'Retry', onPress: () => loadChallenges() }]
+        );
+      } else {
+        Alert.alert(
+          'Connection Error',
+          'Please check your internet connection and try again.',
+          [{ text: 'Retry', onPress: () => loadChallenges() }]
+        );
+      }
+      
       setChallenges([]);
     } finally {
       setLoading(false);
