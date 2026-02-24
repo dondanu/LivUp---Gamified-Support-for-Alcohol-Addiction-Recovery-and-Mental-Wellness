@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Import database initialization and startup gate
+const { initializeDatabaseWithGate } = require('./config/database');
+const { startupGate } = require('./middleware/startupGate');
+
 // Validate required environment variables
 if (!process.env.JWT_SECRET) {
   console.error('❌ ERROR: JWT_SECRET environment variable is required!');
@@ -15,6 +19,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Add startup gate middleware BEFORE routes
+app.use(startupGate);
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/drinks', require('./routes/drinks'));
@@ -212,21 +219,41 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  const serverUrl = `http://localhost:${PORT}`;
-  console.log('\n' + '='.repeat(60));
-  console.log('🚀 Mind Fusion API Server Started Successfully!');
-  console.log('='.repeat(60));
-  console.log(`📍 Server URL: ${serverUrl}`);
-  console.log(`🌐 Open in browser: ${serverUrl}`);
-  console.log(`📊 Health Check: ${serverUrl}/api/health`);
-  console.log(`📚 API Base: ${serverUrl}/api`);
-  console.log('='.repeat(60));
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Database: MySQL`);
-  console.log(`Port: ${PORT}`);
-  console.log('='.repeat(60));
-  console.log(`\n✨ Click here to view: ${serverUrl}\n`);
-});
+// Async startup function
+async function startServer() {
+  try {
+    // Initialize database first
+    const dbReady = await initializeDatabaseWithGate();
+    
+    if (!dbReady) {
+      console.warn('⚠️  Server starting with database initialization failure');
+      console.warn('⚠️  API requests will return 503 until database is ready');
+    }
+    
+    // Start listening only after database is ready
+    app.listen(PORT, () => {
+      const serverUrl = `http://localhost:${PORT}`;
+      console.log('\n' + '='.repeat(60));
+      console.log('🚀 Mind Fusion API Server Started Successfully!');
+      console.log('='.repeat(60));
+      console.log(`📍 Server URL: ${serverUrl}`);
+      console.log(`🌐 Open in browser: ${serverUrl}`);
+      console.log(`📊 Health Check: ${serverUrl}/api/health`);
+      console.log(`📚 API Base: ${serverUrl}/api`);
+      console.log('='.repeat(60));
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Database: MySQL - ${dbReady ? '✅ Ready' : '⚠️  Initializing'}`);
+      console.log(`Port: ${PORT}`);
+      console.log('='.repeat(60));
+      console.log(`\n✨ Click here to view: ${serverUrl}\n`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();
 
 module.exports = app;
