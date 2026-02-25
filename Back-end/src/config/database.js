@@ -33,6 +33,32 @@ async function ensureDatabaseInitialized() {
   }
 }
 
+// Initialize database and signal readiness
+async function initializeDatabaseWithGate() {
+  try {
+    console.log('🔄 Starting database initialization...');
+    await initializeDatabase();
+    console.log('✅ Database initialization complete');
+    
+    // Import here to avoid circular dependency
+    const { setDatabaseReady } = require('../middleware/startupGate');
+    setDatabaseReady(true);
+    return true;
+  } catch (error) {
+    console.error('❌ Database initialization failed:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      errno: error.errno
+    });
+    
+    // Import here to avoid circular dependency
+    const { setDatabaseReady } = require('../middleware/startupGate');
+    setDatabaseReady(false, error);
+    return false;
+  }
+}
+
 // Test connection and initialize database
 pool.getConnection()
   .then(async (connection) => {
@@ -108,5 +134,6 @@ module.exports = {
   pool,
   query,
   queryOne,
-  transaction
+  transaction,
+  initializeDatabaseWithGate
 };
