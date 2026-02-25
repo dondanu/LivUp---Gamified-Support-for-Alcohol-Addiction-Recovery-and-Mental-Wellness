@@ -1,4 +1,4 @@
-const { query, queryOne } = require('../config/database');
+const { query, queryOne, transaction } = require('../config/database');
 const { determineLevel, checkAchievementEligibility } = require('../utils/helpers');
 
 const getUserProfile = async (req, res) => {
@@ -32,8 +32,21 @@ const updateUserPoints = async (req, res) => {
     const userId = req.user.userId;
     const { points, reason } = req.body;
 
-    if (!points || points <= 0) {
-      return res.status(400).json({ error: 'Valid points amount required' });
+    // Input validation
+    if (!points || typeof points !== 'number') {
+      return res.status(400).json({ error: 'Valid points amount required (must be a number)' });
+    }
+    
+    if (points <= 0) {
+      return res.status(400).json({ error: 'Points must be greater than 0' });
+    }
+    
+    if (points > 10000) {
+      return res.status(400).json({ error: 'Points cannot exceed 10000 per update' });
+    }
+    
+    if (reason !== undefined && typeof reason !== 'string') {
+      return res.status(400).json({ error: 'Reason must be a string' });
     }
 
     const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
@@ -101,16 +114,35 @@ const checkAndAwardAchievements = async (req, res) => {
     const newAchievements = [];
     let totalPointsAwarded = 0;
 
+    // Check which achievements are eligible
     for (const achievement of (allAchievements || [])) {
       if (!earnedIds.has(achievement.id) && checkAchievementEligibility(userStats, achievement)) {
-        await query('INSERT INTO user_achievements (user_id, achievement_id) VALUES (?, ?)', [userId, achievement.id]);
         newAchievements.push(achievement);
         totalPointsAwarded += achievement.points_reward;
       }
     }
 
-    if (totalPointsAwarded > 0) {
-      await query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [profile.total_points + totalPointsAwarded, new Date().toISOString(), userId]);
+    // Use transaction to award all achievements and update points atomically
+    if (newAchievements.length > 0) {
+      const { error: txError } = await transaction(async (tx) => {
+        // Insert all new achievements
+        for (const achievement of newAchievements) {
+          const { error } = await tx.query('INSERT INTO user_achievements (user_id, achievement_id) VALUES (?, ?)', [userId, achievement.id]);
+          if (error) {
+            throw new Error('Failed to award achievement: ' + error.message);
+          }
+        }
+
+        // Update user points
+        const { error: pointsError } = await tx.query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [profile.total_points + totalPointsAwarded, new Date().toISOString(), userId]);
+        if (pointsError) {
+          throw new Error('Failed to update points: ' + pointsError.message);
+        }
+      });
+
+      if (txError) {
+        return res.status(500).json({ error: 'Failed to award achievements', details: txError.message });
+      }
     }
 
     res.status(200).json({ message: newAchievements.length > 0 ? 'New achievements unlocked!' : 'No new achievements', newAchievements, pointsAwarded: totalPointsAwarded });
@@ -124,8 +156,13 @@ const updateAvatar = async (req, res) => {
     const userId = req.user.userId;
     const { avatarType } = req.body;
 
-    if (!avatarType) {
-      return res.status(400).json({ error: 'Avatar type is required' });
+    // Input validation
+    if (!avatarType || typeof avatarType !== 'string') {
+      return res.status(400).json({ error: 'Avatar type is required and must be a string' });
+    }
+    
+    if (avatarType.length > 50) {
+      return res.status(400).json({ error: 'Avatar type must be 50 characters or less' });
     }
 
     await query('UPDATE user_profiles SET avatar_type = ?, updated_at = ? WHERE user_id = ?', [avatarType, new Date().toISOString(), userId]);

@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { query, queryOne } = require('../config/database');
+const { query, queryOne, transaction } = require('../config/database');
 
 const register = async (req, res) => {
   try {
@@ -30,36 +30,45 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert user
-    const { data: insertResult, error: userError } = await query(
-      'INSERT INTO users (email, password_hash, username, is_anonymous) VALUES (?, ?, ?, ?)',
-      [email || null, hashedPassword, username, isAnonymous]
-    );
+    // Use transaction to ensure all related records are created together
+    const { data: userId, error: txError } = await transaction(async (tx) => {
+      // Insert user
+      const { data: insertResult, error: userError } = await tx.query(
+        'INSERT INTO users (email, password_hash, username, is_anonymous) VALUES (?, ?, ?, ?)',
+        [email || null, hashedPassword, username, isAnonymous]
+      );
 
-    if (userError) {
-      return res.status(500).json({ error: 'Failed to create user', details: userError.message });
-    }
+      if (userError) {
+        throw new Error('Failed to create user: ' + userError.message);
+      }
 
-    const userId = insertResult.insertId;
+      const newUserId = insertResult.insertId;
 
-    // Create user profile
-    const { error: profileError } = await query(
-      'INSERT INTO user_profiles (user_id, total_points, current_streak, longest_streak, level_id, avatar_type, days_sober) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [userId, 0, 0, 0, 1, 'basic', 0]
-    );
+      // Create user profile
+      const { error: profileError } = await tx.query(
+        'INSERT INTO user_profiles (user_id, total_points, current_streak, longest_streak, level_id, avatar_type, days_sober) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [newUserId, 0, 0, 0, 1, 'basic', 0]
+      );
 
-    if (profileError) {
-      return res.status(500).json({ error: 'Failed to create user profile' });
-    }
+      if (profileError) {
+        throw new Error('Failed to create user profile: ' + profileError.message);
+      }
 
-    // Create user settings
-    const { error: settingsError } = await query(
-      'INSERT INTO user_settings (user_id, notifications_enabled, reminder_frequency, theme) VALUES (?, ?, ?, ?)',
-      [userId, true, 'daily', 'light']
-    );
+      // Create user settings
+      const { error: settingsError } = await tx.query(
+        'INSERT INTO user_settings (user_id, notifications_enabled, reminder_frequency, theme) VALUES (?, ?, ?, ?)',
+        [newUserId, true, 'daily', 'light']
+      );
 
-    if (settingsError) {
-      return res.status(500).json({ error: 'Failed to create user settings' });
+      if (settingsError) {
+        throw new Error('Failed to create user settings: ' + settingsError.message);
+      }
+
+      return newUserId;
+    });
+
+    if (txError) {
+      return res.status(500).json({ error: 'Failed to register user', details: txError.message });
     }
 
     // Get the new user
