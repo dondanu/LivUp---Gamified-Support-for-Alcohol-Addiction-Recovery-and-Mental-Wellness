@@ -12,82 +12,33 @@ import Video from 'react-native-video';
 
 const INTRO_SHOWN_KEY = '@intro_shown';
 
-const videos = [
-  require('../assets/videos/a.mp4'),
-  require('../assets/videos/b.mp4'),
-  require('../assets/videos/c.mp4'),
-  require('../assets/videos/d.mp4'),
-  require('../assets/videos/e.mp4'),
-  require('../assets/videos/f.mp4'),
-  require('../assets/videos/g.mp4'),
-  require('../assets/videos/h.mp4'),
-  require('../assets/videos/i.mp4'),
-  require('../assets/videos/j.mp4'),
-  require('../assets/videos/k.mp4'),
-  require('../assets/videos/l.mp4'),
-  require('../assets/videos/m.mp4'),
-  require('../assets/videos/n.mp4'),
-];
-
 export default function IntroScreen() {
   const navigation = useNavigation();
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [showFirst, setShowFirst] = useState(true);
   const buttonScale = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const currentVideo = videos[currentIndex];
-  const nextIndex = (currentIndex + 1) % videos.length;
-  const nextVideo = videos[nextIndex];
+  const handleNavigateToLogin = () => {
+    // Mark intro as shown (don't wait)
+    AsyncStorage.setItem(INTRO_SHOWN_KEY, 'true');
 
-  const handleVideoEnd = () => {
-    // Switch to next video immediately
-    setCurrentIndex(nextIndex);
-    setShowFirst(!showFirst);
-  };
-
-  const handleNavigateToLogin = async () => {
-    Animated.sequence([
-      Animated.spring(buttonScale, {
-        toValue: 0.95,
-        useNativeDriver: true,
-      }),
-      Animated.spring(buttonScale, {
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    await AsyncStorage.setItem(INTRO_SHOWN_KEY, 'true');
-    navigation.navigate('Login' as never);
+    // Navigate immediately
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Auth' as never }],
+    });
   };
 
   return (
     <View style={styles.container}>
-      {/* Dual Video Players - One plays while other preloads */}
+      {/* Full-Screen Looping Video */}
       <Video
-        key={`video-first-${currentIndex}`}
-        source={currentVideo}
-        style={[styles.backgroundMedia, { zIndex: showFirst ? 2 : 1 }]}
+        source={require('../assets/videos/final.mp4')}
+        style={styles.backgroundMedia}
         resizeMode="cover"
+        repeat
         muted
         playInBackground={false}
         playWhenInactive={false}
-        onEnd={handleVideoEnd}
-        paused={!showFirst}
-        repeat={false}
-      />
-      
-      <Video
-        key={`video-second-${nextIndex}`}
-        source={nextVideo}
-        style={[styles.backgroundMedia, { zIndex: showFirst ? 1 : 2 }]}
-        resizeMode="cover"
-        muted
-        playInBackground={false}
-        playWhenInactive={false}
-        onEnd={handleVideoEnd}
-        paused={showFirst}
-        repeat={false}
       />
 
       {/* Sign In Button - Fixed at Bottom */}
@@ -122,26 +73,27 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 90,
     left: 0,
     right: 0,
+    alignItems: 'center',
     paddingHorizontal: 30,
-    zIndex: 100,
+    zIndex: 10,
   },
   signInButton: {
-    backgroundColor: '#4A90E2',
-    paddingVertical: 16,
-    paddingHorizontal: 60,
-    borderRadius: 30,
+    backgroundColor: '#2750d8ff',
+    paddingVertical: 12,
+    paddingHorizontal: 50,
+    borderRadius: 35,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 6,
+    elevation: 6,
   },
   buttonText: {
-    fontSize: 18,
+    fontSize: 29,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
