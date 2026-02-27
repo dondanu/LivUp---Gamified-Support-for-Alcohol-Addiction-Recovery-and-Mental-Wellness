@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, Platform, LogBox } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Home, Activity, TrendingUp, Target, User } from 'lucide-react-native';
 import ErrorBoundary from './components/ErrorBoundary';
 import 'react-native-gesture-handler';
+import SystemNavigationBar from 'react-native-system-navigation-bar';
 
 // Only ignore specific known warnings, not all errors
 if (__DEV__) {
@@ -113,7 +115,11 @@ function RootNavigator() {
   return (
     <Stack.Navigator 
       key={user ? 'authenticated' : 'unauthenticated'}
-      screenOptions={{ headerShown: false }}>
+      screenOptions={{ 
+        headerShown: false,
+        animation: 'none',
+        animationDuration: 0,
+      }}>
       {user ? (
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
@@ -146,15 +152,28 @@ function RootNavigator() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Hide Android navigation bar on app start
+    if (Platform.OS === 'android') {
+      SystemNavigationBar.navigationHide();
+    }
+  }, []);
+
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <NavigationContainer>
-          <StatusBar barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'} />
-          <RootNavigator />
-        </NavigationContainer>
-      </AuthProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <NavigationContainer>
+            <StatusBar 
+              barStyle={Platform.OS === 'ios' ? 'dark-content' : 'light-content'} 
+              translucent
+              backgroundColor="transparent"
+            />
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
