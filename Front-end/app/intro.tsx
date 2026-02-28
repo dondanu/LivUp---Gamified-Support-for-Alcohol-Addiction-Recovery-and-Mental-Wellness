@@ -16,22 +16,21 @@ export default function IntroScreen() {
   const navigation = useNavigation();
   const buttonScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const videoRef = useRef<any>(null);
 
   const handleNavigateToLogin = () => {
-    // Mark intro as shown (don't wait)
+    // Mark intro as shown
     AsyncStorage.setItem(INTRO_SHOWN_KEY, 'true');
 
-    // Navigate immediately
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Auth' as never }],
-    });
+    // Navigate with replace (instant)
+    (navigation as any).replace('Auth');
   };
 
   return (
     <View style={styles.container}>
       {/* Full-Screen Looping Video */}
       <Video
+        ref={videoRef}
         source={require('../assets/videos/final.mp4')}
         style={styles.backgroundMedia}
         resizeMode="cover"
