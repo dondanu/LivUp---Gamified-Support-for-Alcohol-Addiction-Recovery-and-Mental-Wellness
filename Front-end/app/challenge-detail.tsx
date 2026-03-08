@@ -484,12 +484,12 @@ export default function ChallengeDetailScreen() {
               </Text>
             </View>
 
-            <ScrollView style={styles.quizContent}>
-              <Text style={styles.questionText}>{quizQuestions[currentQuestion].question}</Text>
+            <ScrollView style={styles.quizContent} contentContainerStyle={styles.quizContentContainer}>
+              <Text style={styles.questionText}>{quizQuestions[currentQuestion]?.question || 'Loading question...'}</Text>
 
               <TextInput
                 style={styles.answerInput}
-                placeholder={quizQuestions[currentQuestion].placeholder}
+                placeholder={quizQuestions[currentQuestion]?.placeholder || 'Type your answer here...'}
                 placeholderTextColor="#95A5A6"
                 multiline
                 numberOfLines={4}
@@ -498,6 +498,7 @@ export default function ChallengeDetailScreen() {
                 onChangeText={setCurrentAnswer}
                 returnKeyType="done"
                 blurOnSubmit={true}
+                autoFocus={true}
               />
 
               <TouchableOpacity
@@ -803,7 +804,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingTop: 20,
     paddingBottom: 40,
-    maxHeight: '85%',
+    height: '85%',
+    minHeight: 500,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -844,6 +846,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 16,
+  },
+  quizContentContainer: {
+    paddingBottom: 40,
   },
   questionText: {
     fontSize: 18,
