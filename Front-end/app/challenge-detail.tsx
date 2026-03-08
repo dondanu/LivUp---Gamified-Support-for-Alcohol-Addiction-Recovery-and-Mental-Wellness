@@ -7,12 +7,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import { ArrowLeft, Target, Star, Zap, Award, Play, Clock, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, Target, Star, Zap, Award, Play, Clock, CheckCircle, X } from 'lucide-react-native';
 import { Challenge } from '@/types/database.types';
 import { getChallengeByTitle, getChallengeById, getChallengeIdFromTitle, ChallengeConfig } from '@/config/challenges';
 
@@ -23,6 +27,11 @@ export default function ChallengeDetailScreen() {
   const [loading, setLoading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
+  const [isStarted, setIsStarted] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<string[]>([]);
+  const [currentAnswer, setCurrentAnswer] = useState('');
   
   // Get challenge from route params
   const challenge = route.params?.challenge as Challenge;
@@ -35,6 +44,30 @@ export default function ChallengeDetailScreen() {
     : challengeTitle
       ? getChallengeByTitle(challengeTitle)
       : undefined;
+
+  // Quiz questions for "Learn Something New" challenge
+  const quizQuestions = [
+    {
+      question: "What topic did you learn about today?",
+      placeholder: "e.g., JavaScript programming, cooking techniques, meditation...",
+    },
+    {
+      question: "What was the most interesting thing you discovered?",
+      placeholder: "Share the key insight or fact you found fascinating...",
+    },
+    {
+      question: "How can you apply what you learned in your daily life?",
+      placeholder: "Describe a practical way to use this knowledge...",
+    },
+    {
+      question: "What resource did you use to learn? (video, article, course, etc.)",
+      placeholder: "e.g., YouTube tutorial, blog article, online course...",
+    },
+    {
+      question: "On a scale of 1-10, how valuable was this learning experience and why?",
+      placeholder: "Rate and explain what made it valuable or not...",
+    },
+  ];
 
   // Check if challenge is already completed today
   useEffect(() => {
@@ -62,6 +95,15 @@ export default function ChallengeDetailScreen() {
 
     checkCompletionStatus();
   }, [profile, challenge]);
+
+  // Debug: Log when quiz modal state changes
+  useEffect(() => {
+    console.log('[Quiz] showQuiz changed to:', showQuiz);
+    console.log('[Quiz] currentQuestion:', currentQuestion);
+    if (showQuiz && quizQuestions.length > 0) {
+      console.log('[Quiz] Current question:', quizQuestions[currentQuestion]);
+    }
+  }, [showQuiz, currentQuestion]);
 
   if (!challenge && !challengeConfig) {
     return (
@@ -115,17 +157,154 @@ export default function ChallengeDetailScreen() {
           {
             text: 'Start',
             onPress: () => {
-              // For now, navigate to a generic activity page or show completion button
-              // We'll implement specific pages for other challenges later
+              setIsStarted(true);
               Alert.alert(
-                'Challenge Started',
-                'Follow the instructions above to complete this challenge. When finished, you can mark it as complete.',
-                [{ text: 'OK' }]
+                'Challenge Started! 🎯',
+                'Follow the instructions above to complete this challenge. When finished, tap "Mark as Complete" to earn your points.',
+                [{ text: 'Got it!' }]
               );
             },
           },
         ]
       );
+    }
+  };
+
+  const handleCompleteChallenge = async () => {
+    if (!challengeApiId) {
+      Alert.alert('Error', 'Challenge ID not found');
+      return;
+    }
+
+    // Check if this is "Learn Something New" challenge
+    const isLearnChallenge = challengeTitle.toLowerCase().includes('learn something new');
+
+    if (isLearnChallenge) {
+      // Show quiz for Learn Something New challenge
+      console.log('[Quiz] Showing quiz for Learn Something New challenge');
+      console.log('[Quiz] Quiz questions:', quizQuestions);
+      Alert.alert(
+        'Quick Knowledge Check! 🧠',
+        'Before earning your points, please answer 5 quick questions about what you learned. This helps reinforce your learning!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Start Quiz',
+            onPress: () => {
+              console.log('[Quiz] Starting quiz...');
+              setShowQuiz(true);
+              setCurrentQuestion(0);
+              setQuizAnswers([]);
+              setCurrentAnswer('');
+              console.log('[Quiz] Quiz state set, showQuiz:', true);
+            },
+          },
+        ]
+      );
+    } else {
+      // For other challenges, complete directly
+      completeDirectly();
+    }
+  };
+
+  const completeDirectly = async () => {
+    if (!challengeApiId) return;
+
+    Alert.alert(
+      'Complete Challenge',
+      `Have you completed "${title}"? You'll earn ${points} points!`,
+      [
+        { text: 'Not Yet', style: 'cancel' },
+        {
+          text: 'Yes, Complete',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await api.completeTask(challengeApiId.toString());
+              setIsCompleted(true);
+              setIsStarted(false);
+              await refreshProfile();
+              
+              Alert.alert(
+                'Congratulations! 🎉',
+                `You earned ${points} points! Keep up the great work!`,
+                [
+                  {
+                    text: 'Awesome!',
+                    onPress: () => navigation.goBack(),
+                  },
+                ]
+              );
+            } catch (error: any) {
+              console.error('Error completing challenge:', error);
+              if (error.response?.status === 409) {
+                Alert.alert('Already Completed', 'You have already completed this challenge today!');
+                setIsCompleted(true);
+                setIsStarted(false);
+              } else {
+                Alert.alert('Error', error.message || 'Failed to complete challenge. Please try again.');
+              }
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleQuizAnswer = (answer: string) => {
+    if (!answer.trim()) {
+      Alert.alert('Required', 'Please provide an answer to continue.');
+      return;
+    }
+
+    const newAnswers = [...quizAnswers, answer];
+    setQuizAnswers(newAnswers);
+    setCurrentAnswer(''); // Reset for next question
+
+    if (currentQuestion < quizQuestions.length - 1) {
+      // Move to next question
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      // Quiz completed, now complete the challenge
+      finishQuizAndComplete(newAnswers);
+    }
+  };
+
+  const finishQuizAndComplete = async (answers: string[]) => {
+    if (!challengeApiId) return;
+
+    setShowQuiz(false);
+    setLoading(true);
+
+    try {
+      await api.completeTask(challengeApiId.toString());
+      setIsCompleted(true);
+      setIsStarted(false);
+      await refreshProfile();
+      
+      Alert.alert(
+        'Excellent Work! 🎉',
+        `You've demonstrated your learning and earned ${points} points!\n\nYour answers show real engagement with the material. Keep learning!`,
+        [
+          {
+            text: 'Awesome!',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error completing challenge:', error);
+      if (error.response?.status === 409) {
+        Alert.alert('Already Completed', 'You have already completed this challenge today!');
+        setIsCompleted(true);
+        setIsStarted(false);
+      } else {
+        Alert.alert('Error', error.message || 'Failed to complete challenge. Please try again.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -232,6 +411,20 @@ export default function ChallengeDetailScreen() {
             <CheckCircle size={24} color="#FFFFFF" />
             <Text style={styles.startButtonText}>Completed Today ✅</Text>
           </View>
+        ) : isStarted ? (
+          <TouchableOpacity
+            style={[styles.startButton, styles.completeButton, loading && styles.startButtonDisabled]}
+            onPress={handleCompleteChallenge}
+            disabled={loading}>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <CheckCircle size={24} color="#FFFFFF" />
+                <Text style={styles.startButtonText}>Mark as Complete</Text>
+              </>
+            )}
+          </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={[styles.startButton, loading && styles.startButtonDisabled]}
@@ -248,6 +441,76 @@ export default function ChallengeDetailScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Quiz Modal */}
+      <Modal
+        visible={showQuiz}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          Alert.alert('Cancel Quiz?', 'Your progress will be lost.', [
+            { text: 'Continue Quiz', style: 'cancel' },
+            { text: 'Cancel', onPress: () => setShowQuiz(false) },
+          ]);
+        }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Knowledge Check 🧠</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert('Cancel Quiz?', 'Your progress will be lost.', [
+                    { text: 'Continue Quiz', style: 'cancel' },
+                    { text: 'Cancel', onPress: () => setShowQuiz(false) },
+                  ]);
+                }}>
+                <X size={24} color="#2C3E50" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.progressBar}>
+              <View style={styles.progressBarBackground}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${((currentQuestion + 1) / quizQuestions.length) * 100}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressText}>
+                Question {currentQuestion + 1} of {quizQuestions.length}
+              </Text>
+            </View>
+
+            <ScrollView style={styles.quizContent}>
+              <Text style={styles.questionText}>{quizQuestions[currentQuestion].question}</Text>
+
+              <TextInput
+                style={styles.answerInput}
+                placeholder={quizQuestions[currentQuestion].placeholder}
+                placeholderTextColor="#95A5A6"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={currentAnswer}
+                onChangeText={setCurrentAnswer}
+                returnKeyType="done"
+                blurOnSubmit={true}
+              />
+
+              <TouchableOpacity
+                style={styles.nextButton}
+                onPress={() => handleQuizAnswer(currentAnswer)}>
+                <Text style={styles.nextButtonText}>
+                  {currentQuestion < quizQuestions.length - 1 ? 'Next Question' : 'Submit & Complete'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -501,6 +764,9 @@ const styles = StyleSheet.create({
   completedButton: {
     backgroundColor: '#27AE60',
   },
+  completeButton: {
+    backgroundColor: '#F39C12',
+  },
   startButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
@@ -521,6 +787,94 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // Quiz Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  progressBar: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  progressBarBackground: {
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#4ECDC4',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  quizContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  questionText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 20,
+    lineHeight: 26,
+  },
+  answerInput: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#2C3E50',
+    minHeight: 120,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    marginBottom: 20,
+  },
+  nextButton: {
+    backgroundColor: '#4ECDC4',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#4ECDC4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  nextButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
