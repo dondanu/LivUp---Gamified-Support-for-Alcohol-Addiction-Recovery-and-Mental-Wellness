@@ -4,6 +4,7 @@ const { body } = require('express-validator');
 const { validate } = require('../middleware/validation');
 const { authenticateToken } = require('../middleware/auth');
 const { register, login, getProfile } = require('../controllers/authController');
+const { convertAnonymousToRegistered } = require('../controllers/conversionController');
 
 router.post(
   '/register',
@@ -27,5 +28,17 @@ router.post(
 );
 
 router.get('/profile', authenticateToken, getProfile);
+
+router.post(
+  '/convert',
+  authenticateToken,
+  [
+    body('email').trim().isEmail().withMessage('Invalid email format'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('username').trim().isLength({ min: 3 }).withMessage('Username must be at least 3 characters'),
+    validate
+  ],
+  convertAnonymousToRegistered
+);
 
 module.exports = router;
