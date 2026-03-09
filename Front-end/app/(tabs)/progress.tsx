@@ -309,7 +309,7 @@ function LineChart90Days({
 }
 
 export default function ProgressScreen() {
-  const { profile } = useAuth();
+  const { profile, isAnonymous, anonymousData } = useAuth();
   const [loading, setLoading] = useState(true);
   const [drinkData, setDrinkData] = useState<{ x: string; y: number; fullDate?: string }[]>([]);
   const [triggerCounts, setTriggerCounts] = useState<{ [key: string]: number }>({});
@@ -324,9 +324,29 @@ export default function ProgressScreen() {
 
   useEffect(() => {
     loadProgressData();
-  }, [profile, selectedPeriod]);
+  }, [profile, isAnonymous, anonymousData, selectedPeriod]);
 
   const loadProgressData = async () => {
+    // In anonymous mode, show anonymous data
+    if (isAnonymous && anonymousData) {
+      setLoading(true);
+      try {
+        // Set basic stats from anonymous data
+        setSoberDays(0); // Anonymous users don't track sober days yet
+        setTotalBadges(0); // Anonymous users don't have badges yet
+        setTriggerCounts({}); // Anonymous users don't track triggers yet
+        setDrinkData([]); // Anonymous users don't track drinks yet
+        
+        // You can add more anonymous-specific data here if needed
+      } catch (error) {
+        console.error('Error loading anonymous progress data:', error);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // For registered users, continue with API calls
     if (!profile?.id) return;
 
     setLoading(true);
@@ -676,6 +696,48 @@ export default function ProgressScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4ECDC4" />
+      </View>
+    );
+  }
+
+  // Show message for anonymous users
+  if (isAnonymous) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.header} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
+          <Text style={styles.headerTitle}>Your Progress</Text>
+          <Text style={styles.headerSubtitle}>Track your recovery journey</Text>
+        </LinearGradient>
+
+        <ScrollView style={styles.content}>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <LinearGradient colors={['#4ECDC4', '#44A08D']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
+                <TrendingUp size={32} color="#FFFFFF" />
+                <Text style={styles.statValue}>{anonymousData?.completedTasks?.length || 0}</Text>
+                <Text style={styles.statLabel}>Tasks Completed</Text>
+              </LinearGradient>
+            </View>
+
+            <View style={styles.statCard}>
+              <LinearGradient colors={['#F093FB', '#F5576C']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
+                <Award size={32} color="#FFFFFF" />
+                <Text style={styles.statValue}>{anonymousData?.totalPoints || 0}</Text>
+                <Text style={styles.statLabel}>Points Earned</Text>
+              </LinearGradient>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.milestoneGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
+              <Sparkles size={32} color="#FFFFFF" />
+              <Text style={styles.milestoneTitle}>Anonymous Mode</Text>
+              <Text style={styles.milestoneText}>
+                You're currently in anonymous mode. Create an account to unlock full progress tracking, including drink logs, trigger analysis, badges, and more!
+              </Text>
+            </LinearGradient>
+          </View>
+        </ScrollView>
       </View>
     );
   }
