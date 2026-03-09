@@ -14,9 +14,10 @@ import { api } from '@/lib/api';
 import { MotivationalQuote, UserBadge, Badge, DrinkLog } from '@/types/database.types';
 import { Flame, Trophy, Zap, Award, Heart, AlertCircle, Activity, Target } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { anonymousStorage } from '@/lib/anonymousStorage';
 
 export default function HomeScreen() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, isAnonymous, anonymousData, refreshAnonymousData } = useAuth();
   const navigation = useNavigation<any>();
   const [quote, setQuote] = useState<MotivationalQuote | null>(null);
   const [recentBadges, setRecentBadges] = useState<UserBadge[]>([]);
@@ -33,18 +34,26 @@ export default function HomeScreen() {
         setQuote(quoteResponse.quote);
       }
 
-      if (profile?.id) {
+      if (isAnonymous) {
+        // Anonymous mode - load from local storage
+        const anonData = await anonymousStorage.getData();
+        if (anonData) {
+          setTotalPoints(anonData.totalPoints || 0);
+          setTodayPoints(anonData.totalPoints || 0);
+          setSoberDays(anonData.soberDays || 0);
+          setRecentBadges([]);
+        }
+      } else if (profile?.id) {
+        // Registered user - load from API
         try {
-          // Use getGamificationProfile to get only earned achievements with earned_at dates
           const gamificationResponse = await api.getGamificationProfile();
+          
           if (gamificationResponse?.achievements && gamificationResponse.achievements.length > 0) {
-            // Sort by earned_at date (most recent first) and take top 3
             const recent = gamificationResponse.achievements
               .sort((a: any, b: any) => new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime())
               .slice(0, 3);
             setRecentBadges(recent);
           } else {
-            // New user - no achievements yet
             setRecentBadges([]);
           }
         } catch (error) {
@@ -86,7 +95,6 @@ export default function HomeScreen() {
           setSoberDays(currentStreak);
         }
 
-        // Load total points from gamification profile as single source of truth
         try {
           const gamificationResponse = await api.getGamificationProfile();
           if (gamificationResponse?.profile?.total_points !== undefined) {
@@ -113,13 +121,21 @@ export default function HomeScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      refreshProfile();
-    }, [])
+      if (!isAnonymous) {
+        refreshProfile();
+      } else {
+        refreshAnonymousData();
+      }
+    }, [isAnonymous])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refreshProfile();
+    if (!isAnonymous) {
+      await refreshProfile();
+    } else {
+      await refreshAnonymousData();
+    }
     await loadData();
   };
 
@@ -139,12 +155,12 @@ export default function HomeScreen() {
     <ScrollView
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.header} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
-        <View style={styles.headerContent}>
-          <Text style={styles.greeting}>Hello, {profile?.username || 'Friend'}!</Text>
-          <Text style={styles.welcomeText}>Keep up the amazing work</Text>
-        </View>
-      </LinearGradient>
+        <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.header} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
+          <View style={styles.headerContent}>
+            <Text style={styles.greeting}>Hello, {isAnonymous ? 'Friend' : (profile?.username || 'Friend')}!</Text>
+            <Text style={styles.welcomeText}>Keep up the amazing work</Text>
+          </View>
+        </LinearGradient>
 
       <View style={styles.content}>
         <TouchableOpacity style={styles.sosButton} onPress={handleSOS}>
@@ -172,7 +188,7 @@ export default function HomeScreen() {
           <View style={styles.statCard}>
             <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
               <Trophy size={32} color="#FFFFFF" />
-              <Text style={styles.statValue}>{profile?.current_streak || 0}</Text>
+              <Text style={styles.statValue}>{isAnonymous ? 0 : (profile?.current_streak || 0)}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </LinearGradient>
           </View>
@@ -189,10 +205,10 @@ export default function HomeScreen() {
         <View style={styles.levelCard}>
           <LinearGradient colors={['#F093FB', '#F5576C']} style={styles.levelGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
             <Text style={styles.levelTitle}>Current Level</Text>
-            <Text style={styles.levelValue}>{profile?.level || 'Beginner'}</Text>
+            <Text style={styles.levelValue}>{isAnonymous ? 'Beginner' : (profile?.level || 'Beginner')}</Text>
             <View style={styles.avatarLevelContainer}>
               <Award size={24} color="#FFFFFF" />
-              <Text style={styles.avatarLevelText}>Avatar Level {profile?.avatar_level || 1}</Text>
+              <Text style={styles.avatarLevelText}>Avatar Level {isAnonymous ? 1 : (profile?.avatar_level || 1)}</Text>
             </View>
           </LinearGradient>
         </View>

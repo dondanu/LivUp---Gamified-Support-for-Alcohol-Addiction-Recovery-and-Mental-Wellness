@@ -29,7 +29,7 @@ import {
 import { EmergencyContact, HealthyAlternative, UserBadge } from '@/types/database.types';
 
 export default function ProfileScreen() {
-  const { profile, signOut, refreshProfile } = useAuth();
+  const { profile, signOut, refreshProfile, isAnonymous } = useAuth();
   const navigation = useNavigation<any>();
   const [username, setUsername] = useState(profile?.username || '');
   const [editMode, setEditMode] = useState(false);
@@ -129,17 +129,19 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    const message = isAnonymous 
+      ? 'Exit anonymous mode? Your progress will be lost unless you create an account.'
+      : 'Are you sure you want to sign out?';
+    
+    Alert.alert('Sign Out', message, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign Out',
+        text: isAnonymous ? 'Exit' : 'Sign Out',
         style: 'destructive',
         onPress: async () => {
           await signOut();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Auth' as never }],
-          });
+          // Navigation will be handled automatically by App.tsx
+          // when auth state changes (user becomes null and isAnonymous becomes false)
         },
       },
     ]);
