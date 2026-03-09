@@ -15,15 +15,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { Challenge, UserChallenge } from '@/types/database.types';
 import { Target, CheckCircle, Circle, Trophy, Star, Zap } from 'lucide-react-native';
+import MilestonePrompt from '@/components/MilestonePrompt';
+import { anonymousStorage } from '@/lib/anonymousStorage';
 
 export default function ChallengesScreen() {
   const navigation = useNavigation<any>();
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, isAnonymous, anonymousData, refreshAnonymousData } = useAuth();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [todayPoints, setTodayPoints] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Milestone prompt state
+  const [showMilestonePrompt, setShowMilestonePrompt] = useState(false);
+  const [milestoneType, setMilestoneType] = useState('');
+  const [milestoneData, setMilestoneData] = useState<any>(null);
 
   useEffect(() => {
     loadChallenges();
@@ -36,8 +43,6 @@ export default function ChallengesScreen() {
   );
 
   const loadChallenges = async () => {
-    if (!profile?.id) return;
-
     try {
       console.log('[Challenges] Loading challenges...');
       const challengesResponse = await api.getChallenges();
@@ -45,11 +50,9 @@ export default function ChallengesScreen() {
       
       if (challengesResponse.challenges) {
         const activeChallenges = challengesResponse.challenges.filter((c: any) => {
-          // Filter out challenges that are explicitly inactive, but include all others
           return c.is_active !== false;
         });
         
-        // Remove duplicates by title (keep first occurrence)
         const uniqueChallenges = activeChallenges.reduce((acc: any[], challenge: any) => {
           const title = challenge.title || challenge.task_name || '';
           const exists = acc.find(c => (c.title || c.task_name || '') === title);
@@ -63,40 +66,67 @@ export default function ChallengesScreen() {
         console.log('[Challenges] Unique challenges:', uniqueChallenges.length);
         setChallenges(uniqueChallenges);
         
-        // Get today's progress to determine completed/in-progress challenges
-        try {
-          const todayResponse = await api.getTodayTasks();
-          const completedToday = todayResponse.completedTasks || [];
+        // Load completed challenges based on mode
+        if (isAnonymous) {
+          // Anonymous mode - load from local storage
+          const anonData = await anonymousStorage.getData();
+          if (anonData) {
+            const completedTasks = anonData.completedTasks || [];
+            const userChallengesList = completedTasks.map((task: any) => ({
+              id: task.taskId?.toString() || '',
+              user_id: 'anonymous',
+              challenge_id: task.taskId?.toString() || '',
+              status: 'completed',
+              completed_at: task.completionDate || new Date().toISOString(),
+              created_at: task.completionDate || new Date().toISOString(),
+              challenges: {
+                id: task.taskId?.toString() || '',
+                title: task.taskName,
+                description: '',
+                difficulty: 'Easy',
+                points_reward: task.pointsEarned || 0,
+              },
+            }));
+            
+            setUserChallenges(userChallengesList);
+            setTodayPoints(anonData.totalPoints || 0);
+            console.log('[Challenges] Anonymous completed:', completedTasks.length);
+          }
+        } else if (profile?.id) {
+          // Registered user - load from API
+          try {
+            const todayResponse = await api.getTodayTasks();
+            const completedToday = todayResponse.completedTasks || [];
 
-          const userChallengesList = completedToday.map((task: any) => ({
-            id: task.id?.toString() || '',
-            user_id: profile?.id || '',
-            challenge_id: task.task_id?.toString() || '',
-            status: 'completed',
-            completed_at: task.completion_date || new Date().toISOString(),
-            created_at: task.created_at || new Date().toISOString(),
-            challenges: {
-              id: task.task_id?.toString() || '',
-              title: task.task_name || task.title,
-              description: task.description,
-              difficulty: task.difficulty || 'Easy',
-              points_reward: task.points_reward || task.points || 0,
-            },
-          }));
-          
-          setUserChallenges(userChallengesList);
-          setTodayPoints(todayResponse.totalPointsEarnedToday || 0);
-          console.log('[Challenges] Today completed:', completedToday.length);
-        } catch (error) {
-          setUserChallenges([]);
-          setTodayPoints(0);
+            const userChallengesList = completedToday.map((task: any) => ({
+              id: task.id?.toString() || '',
+              user_id: profile?.id || '',
+              challenge_id: task.task_id?.toString() || '',
+              status: 'completed',
+              completed_at: task.completion_date || new Date().toISOString(),
+              created_at: task.created_at || new Date().toISOString(),
+              challenges: {
+                id: task.task_id?.toString() || '',
+                title: task.task_name || task.title,
+                description: task.description,
+                difficulty: task.difficulty || 'Easy',
+                points_reward: task.points_reward || task.points || 0,
+              },
+            }));
+            
+            setUserChallenges(userChallengesList);
+            setTodayPoints(todayResponse.totalPointsEarnedToday || 0);
+            console.log('[Challenges] Today completed:', completedToday.length);
+          } catch (error) {
+            setUserChallenges([]);
+            setTodayPoints(0);
+          }
         }
       } else {
         console.warn('[Challenges] No challenges in response:', challengesResponse);
         setChallenges([]);
       }
     } catch (error: any) {
-      // Show user-friendly error message
       if (error.response?.status === 503) {
         Alert.alert(
           'System Starting Up',
@@ -142,18 +172,51 @@ export default function ChallengesScreen() {
     }
   };
 
-  const completeChallenge = async (userChallengeId: string, pointsReward: number) => {
-    if (!profile?.id) return;
-
+  const completeChallenge = async (challengeId: string, challengeName: string, pointsReward: number) => {
     try {
-      await api.completeChallenge(userChallengeId);
-      Alert.alert('Congratulations!', `You earned ${pointsReward} points!`);
-      await refreshProfile();
-      loadChallenges();
+      if (isAnonymous) {
+        // Anonymous mode - save to local storage
+        await anonymousStorage.addCompletedTask(
+          parseInt(challengeId),
+          challengeName,
+          pointsReward
+        );
+        
+        // Check for milestones
+        const milestoneCheck = await anonymousStorage.checkMilestones();
+        
+        // Show success alert FIRST
+        Alert.alert('Congratulations!', `You earned ${pointsReward} points!`, [
+          {
+            text: 'Awesome!',
+            onPress: async () => {
+              await refreshAnonymousData();
+              loadChallenges();
+              
+              // After user clicks "Awesome!", show milestone prompt if needed
+              if (milestoneCheck.shouldPrompt) {
+                setMilestoneType(milestoneCheck.milestoneType || '');
+                setMilestoneData(milestoneCheck.milestoneData);
+                setShowMilestonePrompt(true);
+              }
+            },
+          },
+        ]);
+      } else if (profile?.id) {
+        // Registered user - use API
+        const response = await api.completeChallenge(challengeId);
+        Alert.alert('Congratulations!', `You earned ${pointsReward} points!`);
+        await refreshProfile();
+        loadChallenges();
+      }
     } catch (error: any) {
       console.error('Error completing challenge:', error);
       Alert.alert('Error', error.message || 'Failed to complete challenge');
     }
+  };
+
+  const handleDismissMilestone = () => {
+    setShowMilestonePrompt(false);
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -266,7 +329,8 @@ export default function ChallengesScreen() {
                           style={styles.completeButton}
                           onPress={() =>
                             completeChallenge(
-                              userChallenge.id,
+                              userChallenge.challenge_id,
+                              userChallenge.challenges?.title || '',
                               userChallenge.challenges?.points_reward || 0
                             )
                           }>
@@ -368,6 +432,14 @@ export default function ChallengesScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Milestone Prompt Modal */}
+      <MilestonePrompt
+        visible={showMilestonePrompt}
+        milestoneType={milestoneType}
+        milestoneData={milestoneData}
+        onDismiss={handleDismissMilestone}
+      />
     </View>
   );
 }

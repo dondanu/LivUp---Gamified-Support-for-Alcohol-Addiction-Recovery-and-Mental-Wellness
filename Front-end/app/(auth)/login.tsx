@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -21,7 +20,18 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigation = useNavigation<any>();
-  const { signIn, signInAnonymously } = useAuth();
+  const { signIn, signInAnonymously, pendingNavigation, setPendingNavigation } = useAuth();
+
+  useEffect(() => {
+    if (pendingNavigation) {
+      if (pendingNavigation === 'Register') {
+        setPendingNavigation(null);
+        navigation.navigate('Register' as never);
+      } else if (pendingNavigation === 'Login') {
+        setPendingNavigation(null);
+      }
+    }
+  }, [pendingNavigation]);
 
   const handleLogin = async () => {
     if (!email || !password) {
