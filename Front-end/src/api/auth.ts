@@ -76,3 +76,17 @@ export const logout = async (): Promise<void> => {
   await tokenManager.removeToken();
 };
 
+// Convert Anonymous Account to Registered
+export interface ConvertAccountRequest {
+  email: string;
+  password: string;
+  username: string;
+}
+
+export const convertAccount = async (data: ConvertAccountRequest): Promise<AuthResponse> => {
+  const response = await apiClient.post<AuthResponse>('/auth/convert', data);
+  if (response.data.token) {
+    await tokenManager.setToken(response.data.token);
+  }
+  return response.data;
+};

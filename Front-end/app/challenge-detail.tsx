@@ -19,11 +19,13 @@ import { api } from '@/lib/api';
 import { ArrowLeft, Target, Star, Zap, Award, Play, Clock, CheckCircle, X } from 'lucide-react-native';
 import { Challenge } from '@/types/database.types';
 import { getChallengeByTitle, getChallengeById, getChallengeIdFromTitle, ChallengeConfig } from '@/config/challenges';
+import { anonymousStorage } from '@/lib/anonymousStorage';
+import MilestonePrompt from '@/components/MilestonePrompt';
 
 export default function ChallengeDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, isAnonymous, refreshAnonymousData } = useAuth();
   const [loading, setLoading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -32,6 +34,11 @@ export default function ChallengeDetailScreen() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<string[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState('');
+  
+  // Milestone prompt state
+  const [showMilestonePrompt, setShowMilestonePrompt] = useState(false);
+  const [milestoneType, setMilestoneType] = useState('');
+  const [milestoneData, setMilestoneData] = useState<any>(null);
   
   // Get challenge from route params
   const challenge = route.params?.challenge as Challenge;
@@ -72,6 +79,19 @@ export default function ChallengeDetailScreen() {
   // Check if challenge is already completed today
   useEffect(() => {
     const checkCompletionStatus = async () => {
+      if (isAnonymous) {
+        // Anonymous mode - check local storage
+        const anonData = await anonymousStorage.getData();
+        if (anonData && challenge?.id) {
+          const isCompleted = anonData.completedTasks.some(
+            task => task.taskId === parseInt(challenge.id)
+          );
+          setIsCompleted(isCompleted);
+        }
+        setCheckingStatus(false);
+        return;
+      }
+      
       if (!profile?.id || !challenge?.id) {
         setCheckingStatus(false);
         return;
@@ -94,7 +114,7 @@ export default function ChallengeDetailScreen() {
     };
 
     checkCompletionStatus();
-  }, [profile, challenge]);
+  }, [profile, challenge, isAnonymous]);
 
   // Debug: Log when quiz modal state changes
   useEffect(() => {
@@ -220,21 +240,65 @@ export default function ChallengeDetailScreen() {
           onPress: async () => {
             setLoading(true);
             try {
-              await api.completeTask(challengeApiId.toString());
-              setIsCompleted(true);
-              setIsStarted(false);
-              await refreshProfile();
-              
-              Alert.alert(
-                'Congratulations! 🎉',
-                `You earned ${points} points! Keep up the great work!`,
-                [
-                  {
-                    text: 'Awesome!',
-                    onPress: () => navigation.goBack(),
-                  },
-                ]
-              );
+              if (isAnonymous) {
+                // Anonymous mode - save to local storage
+                await anonymousStorage.addCompletedTask(
+                  parseInt(challengeApiId.toString()),
+                  title,
+                  points
+                );
+                
+                console.log('[Challenge Detail] Task added to anonymous storage');
+                
+                // Check for milestones
+                const milestoneCheck = await anonymousStorage.checkMilestones();
+                
+                console.log('[Challenge Detail] Milestone check result:', milestoneCheck);
+                
+                setIsCompleted(true);
+                setIsStarted(false);
+                await refreshAnonymousData();
+                
+                // Show success alert FIRST, then milestone prompt
+                Alert.alert(
+                  'Congratulations! 🎉',
+                  `You earned ${points} points! Keep up the great work!`,
+                  [
+                    {
+                      text: 'Awesome!',
+                      onPress: () => {
+                        // After user clicks "Awesome!", show milestone prompt if needed
+                        if (milestoneCheck.shouldPrompt) {
+                          console.log('[Challenge Detail] Showing milestone prompt after success alert');
+                          setMilestoneType(milestoneCheck.milestoneType || '');
+                          setMilestoneData(milestoneCheck.milestoneData);
+                          setShowMilestonePrompt(true);
+                        } else {
+                          console.log('[Challenge Detail] No milestone to show, navigating back');
+                          navigation.goBack();
+                        }
+                      },
+                    },
+                  ]
+                );
+              } else {
+                // Registered user - use API
+                await api.completeTask(challengeApiId.toString());
+                setIsCompleted(true);
+                setIsStarted(false);
+                await refreshProfile();
+                
+                Alert.alert(
+                  'Congratulations! 🎉',
+                  `You earned ${points} points! Keep up the great work!`,
+                  [
+                    {
+                      text: 'Awesome!',
+                      onPress: () => navigation.goBack(),
+                    },
+                  ]
+                );
+              }
             } catch (error: any) {
               console.error('Error completing challenge:', error);
               if (error.response?.status === 409) {
@@ -279,21 +343,59 @@ export default function ChallengeDetailScreen() {
     setLoading(true);
 
     try {
-      await api.completeTask(challengeApiId.toString());
-      setIsCompleted(true);
-      setIsStarted(false);
-      await refreshProfile();
-      
-      Alert.alert(
-        'Excellent Work! 🎉',
-        `You've demonstrated your learning and earned ${points} points!\n\nYour answers show real engagement with the material. Keep learning!`,
-        [
-          {
-            text: 'Awesome!',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      if (isAnonymous) {
+        // Anonymous mode - save to local storage
+        await anonymousStorage.addCompletedTask(
+          parseInt(challengeApiId.toString()),
+          title,
+          points
+        );
+        
+        // Check for milestones
+        const milestoneCheck = await anonymousStorage.checkMilestones();
+        
+        setIsCompleted(true);
+        setIsStarted(false);
+        await refreshAnonymousData();
+        
+        // Show success alert FIRST, then milestone prompt
+        Alert.alert(
+          'Excellent Work! 🎉',
+          `You've demonstrated your learning and earned ${points} points!\n\nYour answers show real engagement with the material. Keep learning!`,
+          [
+            {
+              text: 'Awesome!',
+              onPress: () => {
+                // After user clicks "Awesome!", show milestone prompt if needed
+                if (milestoneCheck.shouldPrompt) {
+                  setMilestoneType(milestoneCheck.milestoneType || '');
+                  setMilestoneData(milestoneCheck.milestoneData);
+                  setShowMilestonePrompt(true);
+                } else {
+                  navigation.goBack();
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        // Registered user - use API
+        await api.completeTask(challengeApiId.toString());
+        setIsCompleted(true);
+        setIsStarted(false);
+        await refreshProfile();
+        
+        Alert.alert(
+          'Excellent Work! 🎉',
+          `You've demonstrated your learning and earned ${points} points!\n\nYour answers show real engagement with the material. Keep learning!`,
+          [
+            {
+              text: 'Awesome!',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      }
     } catch (error: any) {
       console.error('Error completing challenge:', error);
       if (error.response?.status === 409) {
@@ -512,6 +614,14 @@ export default function ChallengeDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Milestone Prompt Modal */}
+      <MilestonePrompt
+        visible={showMilestonePrompt}
+        milestoneType={milestoneType}
+        milestoneData={milestoneData}
+        onDismiss={() => setShowMilestonePrompt(false)}
+      />
     </View>
   );
 }
