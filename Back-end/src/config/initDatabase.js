@@ -279,6 +279,28 @@ async function createTables(connection) {
     )
   `);
 
+  // Conversion prompts table (for anonymous to registered user conversion)
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS conversion_prompts (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      user_id INT NOT NULL,
+      milestone_type VARCHAR(50) NOT NULL,
+      shown_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      dismissed BOOLEAN DEFAULT FALSE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE KEY unique_user_milestone (user_id, milestone_type),
+      INDEX idx_conversion_prompts_user_id (user_id),
+      INDEX idx_conversion_prompts_milestone_type (milestone_type),
+      CHECK (milestone_type IN (
+        'first_achievement',
+        'first_challenge',
+        'points_150',
+        'usage_3_days',
+        'usage_7_days'
+      ))
+    )
+  `);
+
   console.log('✅ All tables created successfully');
 }
 
