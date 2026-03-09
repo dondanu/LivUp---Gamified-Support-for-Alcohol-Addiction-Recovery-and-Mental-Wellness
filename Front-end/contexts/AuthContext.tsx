@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { register, login, getProfile, logout, tokenManager } from '@/src/api';
 import { Profile } from '@/types/database.types';
+import { anonymousStorage, AnonymousUserData } from '@/lib/anonymousStorage';
 
 interface User {
   id: string;
@@ -14,11 +15,17 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  isAnonymous: boolean;
+  anonymousData: AnonymousUserData | null;
+  pendingNavigation: string | null;
   signUp: (email: string, password: string, username?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   signInAnonymously: () => Promise<{ error: any }>;
+  convertToRegistered: (email: string, password: string, username: string) => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
+  refreshAnonymousData: () => Promise<void>;
+  setPendingNavigation: (screen: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +34,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [anonymousData, setAnonymousData] = useState<AnonymousUserData | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   const fetchProfile = async () => {
     try {
@@ -57,14 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       setProfile(profileData);
     } catch (error: any) {
-      console.error('Error fetching profile:', error);
+      // Don't log error if we're in anonymous mode
+      const isAnonMode = await anonymousStorage.isAnonymousMode();
+      if (!isAnonMode) {
+        console.error('Error fetching profile:', error);
+      }
       // If profile fetch fails, user might not be authenticated
       setUser(null);
       setProfile(null);
-      // Re-throw if it's a network error so we can handle it appropriately
-      if (error.message && error.message.includes('Cannot connect')) {
-        throw error;
-      }
+      // Re-throw so caller can handle
+      throw error;
     }
   };
 
@@ -72,12 +84,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check if user is already authenticated (has token)
     const checkAuth = async () => {
       try {
-        // Check if we have a token first
+        // First check if in anonymous mode
+        const isAnonMode = await anonymousStorage.isAnonymousMode();
+        
+        if (isAnonMode) {
+          // User is in anonymous mode - no API calls needed
+          setIsAnonymous(true);
+          const data = await anonymousStorage.getData();
+          setAnonymousData(data);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+        
+        // Check if we have a token
         const token = await tokenManager.getToken();
         
         if (token) {
           // Only try to fetch profile if we have a token
-          await fetchProfile();
+          try {
+            await fetchProfile();
+          } catch (profileError: any) {
+            // Profile fetch failed - clear auth state
+            console.log('Profile fetch failed, clearing auth state');
+            setUser(null);
+            setProfile(null);
+          }
         } else {
           // No token, user is not authenticated
           setUser(null);
@@ -170,12 +203,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await logout();
-      setUser(null);
-      setProfile(null);
+      if (isAnonymous) {
+        await anonymousStorage.disableAnonymousMode();
+        setIsAnonymous(false);
+        setAnonymousData(null);
+        setUser(null);
+        setProfile(null);
+      } else {
+        await logout();
+        setUser(null);
+        setProfile(null);
+      }
     } catch (error) {
       console.error('Sign out error:', error);
-      // Clear local state even if API call fails
+      if (isAnonymous) {
+        await anonymousStorage.disableAnonymousMode();
+        setIsAnonymous(false);
+        setAnonymousData(null);
+      }
       setUser(null);
       setProfile(null);
     }
@@ -183,30 +228,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInAnonymously = async () => {
     try {
-      // Generate a random username for anonymous user
-      const randomUsername = `anonymous_${Math.random().toString(36).substring(7)}`;
-      const response = await register({
-        username: randomUsername,
-        password: Math.random().toString(36),
-        isAnonymous: true,
-      });
-
-      setUser(response.user);
-      await fetchProfile();
+      // Enable anonymous mode (NO account creation!)
+      await anonymousStorage.enableAnonymousMode();
+      
+      setIsAnonymous(true);
+      const data = await anonymousStorage.getData();
+      setAnonymousData(data);
+      setUser(null);
+      setProfile(null);
 
       return { error: null };
     } catch (error: any) {
-      // Extract error message from Axios error response
-      let errorMessage = 'Failed to sign in anonymously';
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      return { error: { message: errorMessage } };
+      return { error: { message: 'Failed to start anonymous mode' } };
     }
   };
 
@@ -216,15 +249,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshAnonymousData = async () => {
+    if (isAnonymous) {
+      const data = await anonymousStorage.getData();
+      setAnonymousData(data);
+    }
+  };
+
+  const convertToRegistered = async (email: string, password: string, username: string) => {
+    try {
+      // Get all anonymous data
+      const anonData = await anonymousStorage.getData();
+      
+      if (!anonData) {
+        return { error: { message: 'No anonymous data found' } };
+      }
+      
+      // Create new account
+      const response = await register({
+        username,
+        password,
+        email,
+        isAnonymous: false,
+      });
+
+      // Update user state
+      setUser(response.user);
+      await fetchProfile();
+      
+      // TODO: Upload all anonymous data to the server
+      // For now, we'll just clear anonymous mode
+      await anonymousStorage.disableAnonymousMode();
+      setIsAnonymous(false);
+      setAnonymousData(null);
+
+      return { error: null };
+    } catch (error: any) {
+      let errorMessage = 'Failed to create account';
+
+      if (error.response?.data?.details && Array.isArray(error.response.data.details)) {
+        const firstError = error.response.data.details[0];
+        errorMessage = firstError.msg || error.response.data.error || errorMessage;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      return { error: { message: errorMessage } };
+    }
+  };
+
   const value = {
     user,
     profile,
     loading,
+    isAnonymous,
+    anonymousData,
+    pendingNavigation,
     signUp,
     signIn,
     signOut,
     signInAnonymously,
+    convertToRegistered,
     refreshProfile,
+    refreshAnonymousData,
+    setPendingNavigation,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
