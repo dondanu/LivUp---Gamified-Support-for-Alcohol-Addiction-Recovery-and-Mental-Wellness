@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Home, Activity, TrendingUp, Target, User } from 'lucide-react-native';
 import ErrorBoundary from './components/ErrorBoundary';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-gesture-handler';
 import SystemNavigationBar from 'react-native-system-navigation-bar';
 
@@ -106,21 +107,32 @@ function AuthNavigator() {
 }
 
 function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAnonymous, pendingNavigation } = useAuth();
+  const [introShown, setIntroShown] = useState<boolean | null>(null);
 
-  if (loading) {
+  useEffect(() => {
+    const checkIntro = async () => {
+      const shown = await AsyncStorage.getItem('@intro_shown');
+      setIntroShown(shown === 'true');
+    };
+    checkIntro();
+  }, [user, isAnonymous]);
+
+  if (loading || introShown === null) {
     return <IndexScreen />;
   }
 
   return (
     <Stack.Navigator 
-      key={user ? 'authenticated' : 'unauthenticated'}
+      key={user || isAnonymous ? 'authenticated' : 'unauthenticated'}
       screenOptions={{ 
         headerShown: false,
         animation: 'none',
         animationDuration: 0,
-      }}>
-      {user ? (
+      }}
+      initialRouteName={user || isAnonymous ? 'Tabs' : (introShown ? 'Auth' : 'Intro')}
+    >
+      {user || isAnonymous ? (
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
           <Stack.Screen name="SOS" component={SOSScreen} />
