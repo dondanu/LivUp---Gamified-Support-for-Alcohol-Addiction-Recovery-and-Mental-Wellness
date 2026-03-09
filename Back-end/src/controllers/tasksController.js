@@ -1,5 +1,6 @@
 const { query, queryOne } = require('../config/database');
 const { verifyTableExists } = require('../utils/tableVerification');
+const { detectMilestone, recordPromptShown } = require('../utils/milestoneDetection');
 
 const getDailyTasks = async (req, res) => {
   try {
@@ -166,7 +167,32 @@ const completeTask = async (req, res) => {
 
     await query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [newTotalPoints, new Date().toISOString(), userId]);
 
-    res.status(201).json({ message: 'Task completed successfully', completion, pointsEarned: task.points_reward, totalPoints: newTotalPoints });
+    // Check for first challenge completion milestone
+    const { data: allCompletedTasks } = await query('SELECT id FROM user_daily_tasks WHERE user_id = ?', [userId]);
+    const isFirstChallenge = (allCompletedTasks || []).length === 1; // Just completed the first one
+    let conversionPrompt = null;
+
+    if (isFirstChallenge) {
+      const milestone = await detectMilestone(userId, 'challenge_completed', {
+        isFirstChallenge: true,
+        challengeName: task.task_name,
+        pointsEarned: task.points_reward
+      });
+
+      if (milestone.shouldShowPrompt) {
+        conversionPrompt = milestone;
+        // Record that prompt was shown
+        await recordPromptShown(userId, milestone.milestoneType);
+      }
+    }
+
+    res.status(201).json({ 
+      message: 'Task completed successfully', 
+      completion, 
+      pointsEarned: task.points_reward, 
+      totalPoints: newTotalPoints,
+      conversionPrompt
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }

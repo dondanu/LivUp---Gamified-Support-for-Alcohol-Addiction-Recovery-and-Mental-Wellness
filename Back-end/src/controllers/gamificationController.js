@@ -1,5 +1,6 @@
 const { query, queryOne, transaction } = require('../config/database');
 const { determineLevel, checkAchievementEligibility } = require('../utils/helpers');
+const { detectMilestone, recordPromptShown } = require('../utils/milestoneDetection');
 
 const getUserProfile = async (req, res) => {
   try {
@@ -63,7 +64,29 @@ const updateUserPoints = async (req, res) => {
 
     const leveledUp = newLevel.id > profile.level_id;
 
-    res.status(200).json({ message: 'Points updated successfully', profile: updatedProfile, pointsAdded: points, reason: reason || 'Manual update', leveledUp, newLevel: leveledUp ? newLevel : null });
+    // Check for points milestone
+    let conversionPrompt = null;
+    if (newTotalPoints >= 150) {
+      const milestone = await detectMilestone(userId, 'points_earned', {
+        totalPoints: newTotalPoints
+      });
+
+      if (milestone.shouldShowPrompt) {
+        conversionPrompt = milestone;
+        // Record that prompt was shown
+        await recordPromptShown(userId, milestone.milestoneType);
+      }
+    }
+
+    res.status(200).json({ 
+      message: 'Points updated successfully', 
+      profile: updatedProfile, 
+      pointsAdded: points, 
+      reason: reason || 'Manual update', 
+      leveledUp, 
+      newLevel: leveledUp ? newLevel : null,
+      conversionPrompt
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
@@ -145,7 +168,30 @@ const checkAndAwardAchievements = async (req, res) => {
       }
     }
 
-    res.status(200).json({ message: newAchievements.length > 0 ? 'New achievements unlocked!' : 'No new achievements', newAchievements, pointsAwarded: totalPointsAwarded });
+    // Check for first achievement milestone
+    const isFirstAchievement = earnedIds.size === 0 && newAchievements.length > 0;
+    let conversionPrompt = null;
+
+    if (isFirstAchievement) {
+      const milestone = await detectMilestone(userId, 'achievement_unlocked', {
+        isFirstAchievement: true,
+        achievementName: newAchievements[0].name,
+        pointsEarned: newAchievements[0].points_reward
+      });
+
+      if (milestone.shouldShowPrompt) {
+        conversionPrompt = milestone;
+        // Record that prompt was shown
+        await recordPromptShown(userId, milestone.milestoneType);
+      }
+    }
+
+    res.status(200).json({ 
+      message: newAchievements.length > 0 ? 'New achievements unlocked!' : 'No new achievements', 
+      newAchievements, 
+      pointsAwarded: totalPointsAwarded,
+      conversionPrompt
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
