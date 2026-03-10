@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const INTRO_SHOWN_KEY = '@intro_shown';
 
 export default function Index() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAnonymous } = useAuth();
   const navigation = useNavigation<any>();
   const [checkingIntro, setCheckingIntro] = useState(true);
 
@@ -20,20 +20,17 @@ export default function Index() {
       const introShown = await AsyncStorage.getItem(INTRO_SHOWN_KEY);
       
       if (!loading) {
-        if (!introShown && !user) {
-          // First time user - show intro
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Intro' as never }],
-          });
-        } else if (user) {
-          // Logged in user - go to tabs
+        if (user || isAnonymous) {
           navigation.reset({
             index: 0,
             routes: [{ name: 'Tabs' as never }],
           });
+        } else if (!introShown) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Intro' as never }],
+          });
         } else {
-          // Returning user - go to auth
           navigation.reset({
             index: 0,
             routes: [{ name: 'Auth' as never }],
@@ -51,7 +48,7 @@ export default function Index() {
     if (!loading && !checkingIntro) {
       checkIntroStatus();
     }
-  }, [user, loading]);
+  }, [user, loading, isAnonymous]);
 
   return (
     <View style={styles.container}>

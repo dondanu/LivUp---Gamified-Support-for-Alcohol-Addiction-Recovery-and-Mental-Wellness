@@ -14,7 +14,10 @@ import { api } from '@/lib/api';
 import { DrinkLog, MoodLog, TriggerLog, UserBadge } from '@/types/database.types';
 import { TrendingUp, Award, Calendar, Sparkles } from 'lucide-react-native';
 import { useMemo } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const INTRO_SHOWN_KEY = '@intro_shown';
 const { width } = Dimensions.get('window');
 
 function LineChart90Days({
@@ -309,7 +312,8 @@ function LineChart90Days({
 }
 
 export default function ProgressScreen() {
-  const { profile, isAnonymous, anonymousData } = useAuth();
+  const { profile, isAnonymous, anonymousData, signOut, setPendingNavigation } = useAuth();
+  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [drinkData, setDrinkData] = useState<{ x: string; y: number; fullDate?: string }[]>([]);
   const [triggerCounts, setTriggerCounts] = useState<{ [key: string]: number }>({});
@@ -321,6 +325,15 @@ export default function ProgressScreen() {
   const [lineTooltip, setLineTooltip] = useState<{ label: string; value: number; x: number; y: number } | null>(null);
   // For 90‑day chart: which 9‑day window is visible (0–9)
   const [ninetyDayPage, setNinetyDayPage] = useState(0);
+
+  const handleCreateAccount = async () => {
+    // Set pending navigation to Register
+    setPendingNavigation('Register');
+    // Mark intro as shown
+    await AsyncStorage.setItem(INTRO_SHOWN_KEY, 'true');
+    // Sign out to trigger navigation
+    await signOut();
+  };
 
   useEffect(() => {
     loadProgressData();
@@ -736,6 +749,68 @@ export default function ProgressScreen() {
                 You're currently in anonymous mode. Create an account to unlock full progress tracking, including drink logs, trigger analysis, badges, and more!
               </Text>
             </LinearGradient>
+          </View>
+
+          {/* Your Anonymous Journey Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Your Anonymous Journey</Text>
+            <View style={styles.journeyStats}>
+              <View style={styles.journeyStat}>
+                <Calendar size={24} color="#667EEA" />
+                <Text style={styles.journeyStatValue}>
+                  {anonymousData?.startDate 
+                    ? Math.floor((Date.now() - new Date(anonymousData.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+                    : 1}
+                </Text>
+                <Text style={styles.journeyStatLabel}>Days Active</Text>
+              </View>
+              <View style={styles.journeyStat}>
+                <TrendingUp size={24} color="#4ECDC4" />
+                <Text style={styles.journeyStatValue}>{anonymousData?.completedTasks?.length || 0}</Text>
+                <Text style={styles.journeyStatLabel}>Tasks Done</Text>
+              </View>
+              <View style={styles.journeyStat}>
+                <Award size={24} color="#F093FB" />
+                <Text style={styles.journeyStatValue}>{anonymousData?.totalPoints || 0}</Text>
+                <Text style={styles.journeyStatLabel}>Points</Text>
+              </View>
+            </View>
+
+            {/* Locked Badges Preview */}
+            <View style={styles.lockedBadgesSection}>
+              <Text style={styles.lockedBadgesTitle}>🔒 Unlock Achievements</Text>
+              <Text style={styles.lockedBadgesSubtitle}>Create an account to earn these badges and more!</Text>
+              
+              <View style={styles.lockedBadgesGrid}>
+                <View style={styles.lockedBadge}>
+                  <View style={styles.lockedBadgeIcon}>
+                    <Text style={styles.lockedBadgeEmoji}>🏆</Text>
+                  </View>
+                  <Text style={styles.lockedBadgeName}>First Week</Text>
+                  <Text style={styles.lockedBadgeDesc}>7 days sober</Text>
+                </View>
+
+                <View style={styles.lockedBadge}>
+                  <View style={styles.lockedBadgeIcon}>
+                    <Text style={styles.lockedBadgeEmoji}>🔥</Text>
+                  </View>
+                  <Text style={styles.lockedBadgeName}>Streak Master</Text>
+                  <Text style={styles.lockedBadgeDesc}>30-day streak</Text>
+                </View>
+
+                <View style={styles.lockedBadge}>
+                  <View style={styles.lockedBadgeIcon}>
+                    <Text style={styles.lockedBadgeEmoji}>⭐</Text>
+                  </View>
+                  <Text style={styles.lockedBadgeName}>Challenge Pro</Text>
+                  <Text style={styles.lockedBadgeDesc}>50 tasks done</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.unlockButton} onPress={handleCreateAccount}>
+                <Text style={styles.unlockButtonText}>Create Account to Unlock</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </View>
@@ -1379,5 +1454,97 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#7F8C8D',
     textAlign: 'center',
+  },
+  journeyStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 24,
+  },
+  journeyStat: {
+    alignItems: 'center',
+  },
+  journeyStatValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginTop: 8,
+  },
+  journeyStatLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginTop: 4,
+  },
+  lockedBadgesSection: {
+    marginTop: 8,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  lockedBadgesTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  lockedBadgesSubtitle: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  lockedBadgesGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  lockedBadge: {
+    alignItems: 'center',
+    width: 100,
+  },
+  lockedBadgeIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F5F7FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderStyle: 'dashed',
+  },
+  lockedBadgeEmoji: {
+    fontSize: 32,
+    opacity: 0.3,
+  },
+  lockedBadgeName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2C3E50',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  lockedBadgeDesc: {
+    fontSize: 11,
+    color: '#95A5A6',
+    textAlign: 'center',
+  },
+  unlockButton: {
+    backgroundColor: '#667EEA',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#667EEA',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  unlockButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
