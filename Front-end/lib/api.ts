@@ -94,4 +94,7 @@ export const api = {
   getMonthlyProgress: apiExports.getMonthlyProgress,
   getOverallProgress: apiExports.getOverallProgress,
   getDashboard: apiExports.getDashboard,
+
+  // Insights
+  getSmartInsights: apiExports.getSmartInsights,
 };

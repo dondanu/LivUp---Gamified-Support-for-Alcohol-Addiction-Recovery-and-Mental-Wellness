@@ -329,6 +329,10 @@ export default function ProgressScreen() {
   // For 90‑day chart: which 9‑day window is visible (0–9)
   const [ninetyDayPage, setNinetyDayPage] = useState(0);
 
+  // Insights state
+  const [insights, setInsights] = useState<any>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+
   // Tracking states (moved from track tab)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [drinksCount, setDrinksCount] = useState(0);
@@ -372,7 +376,23 @@ export default function ProgressScreen() {
   useEffect(() => {
     loadProgressData();
     loadDayData();
+    loadInsights();
   }, [profile, isAnonymous, anonymousData, selectedPeriod, selectedDate]);
+
+  const loadInsights = async () => {
+    if (!profile?.id || isAnonymous) return;
+
+    setInsightsLoading(true);
+    try {
+      const response = await api.getSmartInsights();
+      setInsights(response.insights);
+    } catch (error) {
+      console.error('Error loading insights:', error);
+      setInsights(null);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
 
   const loadDayData = async () => {
     if (!profile?.id || isAnonymous) return;
@@ -422,6 +442,7 @@ export default function ProgressScreen() {
       Alert.alert('Success', 'Drink log saved successfully');
       // Reload progress data to update charts
       loadProgressData();
+      loadInsights(); // Reload insights after saving
     } catch (error: any) {
       console.error('Error saving drink log:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to save drink log';
@@ -468,6 +489,7 @@ export default function ProgressScreen() {
       Alert.alert('Success', 'Trigger logged successfully');
       // Reload progress data to update trigger analysis
       loadProgressData();
+      loadInsights(); // Reload insights after saving
     } catch (error: any) {
       console.error('Error saving trigger log:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to save trigger log';
@@ -1064,6 +1086,59 @@ export default function ProgressScreen() {
                 <Text style={styles.unlockButtonText}>Create Account to Track</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        )}
+
+        {/* Smart Insights Section */}
+        {!isAnonymous && (
+          <View style={styles.insightsSection}>
+            {insightsLoading ? (
+              <View style={styles.insightsCard}>
+                <ActivityIndicator size="large" color="#4ECDC4" />
+                <Text style={styles.insightsLoadingText}>Analyzing your progress...</Text>
+              </View>
+            ) : insights ? (
+              <View style={[
+                styles.insightsCard,
+                insights.type === 'excellent' && styles.insightsExcellent,
+                insights.type === 'good' && styles.insightsGood,
+                insights.type === 'warning' && styles.insightsWarning,
+                insights.type === 'moderate' && styles.insightsModerate,
+              ]}>
+                <Text style={styles.insightsTitle}>{insights.title}</Text>
+                <Text style={styles.insightsMessage}>{insights.message}</Text>
+                
+                {insights.tips && insights.tips.length > 0 && (
+                  <View style={styles.insightsTips}>
+                    <Text style={styles.insightsTipsTitle}>💡 Tips:</Text>
+                    {insights.tips.map((tip, index) => (
+                      <Text key={index} style={styles.insightsTip}>• {tip}</Text>
+                    ))}
+                  </View>
+                )}
+
+                {insights.stats && (
+                  <View style={styles.insightsStats}>
+                    <View style={styles.insightsStat}>
+                      <Text style={styles.insightsStatValue}>{insights.stats.alcoholFreeDays}</Text>
+                      <Text style={styles.insightsStatLabel}>Alcohol-free days</Text>
+                    </View>
+                    {insights.stats.commonMood && (
+                      <View style={styles.insightsStat}>
+                        <Text style={styles.insightsStatValue}>
+                          {insights.stats.commonMood === 'happy' ? '😊' : 
+                           insights.stats.commonMood === 'sad' ? '😢' :
+                           insights.stats.commonMood === 'stressed' ? '😰' :
+                           insights.stats.commonMood === 'anxious' ? '😟' :
+                           insights.stats.commonMood === 'calm' ? '😌' : '🤩'}
+                        </Text>
+                        <Text style={styles.insightsStatLabel}>Common mood</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            ) : null}
           </View>
         )}
 
@@ -2178,5 +2253,95 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
     marginBottom: 16,
+  },
+  // Insights Section Styles
+  insightsSection: {
+    marginBottom: 24,
+  },
+  insightsCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 16,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4ECDC4',
+  },
+  insightsExcellent: {
+    borderLeftColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  insightsGood: {
+    borderLeftColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  insightsWarning: {
+    borderLeftColor: '#F59E0B',
+    backgroundColor: '#FFFBEB',
+  },
+  insightsModerate: {
+    borderLeftColor: '#8B5CF6',
+    backgroundColor: '#F5F3FF',
+  },
+  insightsLoadingText: {
+    textAlign: 'center',
+    color: '#7F8C8D',
+    marginTop: 12,
+    fontSize: 14,
+  },
+  insightsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  insightsMessage: {
+    fontSize: 16,
+    color: '#4B5563',
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+  insightsTips: {
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  insightsTipsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  insightsTip: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  insightsStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  insightsStat: {
+    alignItems: 'center',
+  },
+  insightsStatValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  insightsStatLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });

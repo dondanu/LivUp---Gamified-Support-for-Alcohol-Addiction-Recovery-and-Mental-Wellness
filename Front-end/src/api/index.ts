@@ -34,6 +34,9 @@ export * from './settings';
 // Health API
 export * from './health';
 
+// Insights API
+export * from './insights';
+
 // Re-export token manager for convenience
 export { tokenManager } from './client';
 

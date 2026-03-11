@@ -33,6 +33,7 @@ app.use('/api/content', require('./routes/content'));
 app.use('/api/sos', require('./routes/sos'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/progress', require('./routes/progress'));
+app.use('/api/insights', require('./routes/insights'));
 
 // Welcome page route
 app.get('/', (req, res) => {
@@ -197,7 +198,8 @@ app.get('/api', (req, res) => {
       content: '/api/content',
       sos: '/api/sos',
       settings: '/api/settings',
-      progress: '/api/progress'
+      progress: '/api/progress',
+      insights: '/api/insights'
     },
     generatedAt: new Date().toISOString()
   });
