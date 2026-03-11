@@ -2,6 +2,8 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from '@/lib/config';
 
+console.log('[API Client] Module loaded - top level');
+
 const TOKEN_KEY = '@auth_token';
 
 // Create axios instance
@@ -17,8 +19,12 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor - Add token to requests
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    console.log('[API Client] Request interceptor called');
     try {
+      console.log('[API Client] Getting token...');
       const token = await AsyncStorage.getItem(TOKEN_KEY);
+      console.log('[API Client] Token retrieved:', !!token);
+      
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -29,11 +35,13 @@ apiClient.interceptors.request.use(
         console.log('[API Request Data]', JSON.stringify(config.data, null, 2));
       }
     } catch (error) {
-      console.error('Error getting token:', error);
+      console.error('[API Client] Error in request interceptor:', error);
+      console.error('[API Client] Error stack:', error instanceof Error ? error.stack : 'No stack');
     }
     return config;
   },
   (error: AxiosError) => {
+    console.error('[API Client] Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -45,6 +53,7 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
+    console.log('[API Client] Response interceptor error handler called');
     const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
     
     // Handle 503 Service Unavailable with retry
@@ -65,8 +74,13 @@ apiClient.interceptors.response.use(
     // Errors are handled by the calling code
     
     if (error.response?.status === 401) {
+      console.log('[API Client] 401 error, removing token...');
       // Token expired or invalid - clear token
-      await AsyncStorage.removeItem(TOKEN_KEY);
+      try {
+        await AsyncStorage.removeItem(TOKEN_KEY);
+      } catch (removeError) {
+        console.error('[API Client] Error removing token:', removeError);
+      }
     }
     return Promise.reject(error);
   }
