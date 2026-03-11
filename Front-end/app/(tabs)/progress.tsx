@@ -7,12 +7,15 @@ import {
   ActivityIndicator,
   Dimensions,
   TouchableOpacity,
+  TextInput,
+  Modal,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { DrinkLog, MoodLog, TriggerLog, UserBadge } from '@/types/database.types';
-import { TrendingUp, Award, Calendar, Sparkles } from 'lucide-react-native';
+import { TrendingUp, Award, Calendar, Sparkles, AlertTriangle, Plus, Minus, Save, X } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -326,6 +329,37 @@ export default function ProgressScreen() {
   // For 90‑day chart: which 9‑day window is visible (0–9)
   const [ninetyDayPage, setNinetyDayPage] = useState(0);
 
+  // Tracking states (moved from track tab)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [drinksCount, setDrinksCount] = useState(0);
+  const [notes, setNotes] = useState('');
+  const [mood, setMood] = useState('');
+  const [moodNotes, setMoodNotes] = useState('');
+  const [triggerType, setTriggerType] = useState('');
+  const [triggerDescription, setTriggerDescription] = useState('');
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [showCravingModal, setShowCravingModal] = useState(false);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [showTriggerModal, setShowTriggerModal] = useState(false);
+
+  const moods = [
+    { value: 'happy', label: 'Happy', icon: '😊', color: '#4ECDC4' },
+    { value: 'sad', label: 'Sad', icon: '😢', color: '#95A5A6' },
+    { value: 'stressed', label: 'Stressed', icon: '😰', color: '#E74C3C' },
+    { value: 'anxious', label: 'Anxious', icon: '😟', color: '#F39C12' },
+    { value: 'calm', label: 'Calm', icon: '😌', color: '#3498DB' },
+    { value: 'energetic', label: 'Energetic', icon: '🤩', color: '#9B59B6' },
+  ];
+
+  const triggers = [
+    { value: 'stress', label: 'Stress', color: '#E74C3C' },
+    { value: 'social', label: 'Social Event', color: '#3498DB' },
+    { value: 'boredom', label: 'Boredom', color: '#95A5A6' },
+    { value: 'party', label: 'Party/Celebration', color: '#F39C12' },
+    { value: 'anxiety', label: 'Anxiety', color: '#9B59B6' },
+    { value: 'other', label: 'Other', color: '#34495E' },
+  ];
+
   const handleCreateAccount = async () => {
     // Set pending navigation to Register
     setPendingNavigation('Register');
@@ -337,7 +371,110 @@ export default function ProgressScreen() {
 
   useEffect(() => {
     loadProgressData();
-  }, [profile, isAnonymous, anonymousData, selectedPeriod]);
+    loadDayData();
+  }, [profile, isAnonymous, anonymousData, selectedPeriod, selectedDate]);
+
+  const loadDayData = async () => {
+    if (!profile?.id || isAnonymous) return;
+
+    try {
+      const drinkLogsResponse = await api.getDrinkLogs();
+      const drinkLog = drinkLogsResponse.logs?.find((log: any) => {
+        const logDate = log.log_date || log.date;
+        return logDate === selectedDate;
+      });
+
+      if (drinkLog) {
+        setDrinksCount(drinkLog.drink_count || drinkLog.drinks_count || 0);
+        setNotes(drinkLog.notes || '');
+      } else {
+        setDrinksCount(0);
+        setNotes('');
+      }
+
+      const moodLogsResponse = await api.getMoodLogs();
+      const moodLog = moodLogsResponse.logs?.find((log: any) => {
+        const logDate = log.log_date || log.date;
+        return logDate === selectedDate;
+      });
+
+      if (moodLog) {
+        setMood(moodLog.mood_type || moodLog.mood);
+        setMoodNotes(moodLog.notes || '');
+      } else {
+        setMood('');
+        setMoodNotes('');
+      }
+    } catch (error) {
+      console.error('Error loading day data:', error);
+    }
+  };
+
+  const saveDrinkLog = async () => {
+    if (!profile?.id || isAnonymous) {
+      Alert.alert('Authentication Required', 'Please create an account to track your progress.');
+      return;
+    }
+
+    setTrackingLoading(true);
+    try {
+      await api.logDrink(drinksCount, selectedDate, notes);
+      Alert.alert('Success', 'Drink log saved successfully');
+      // Reload progress data to update charts
+      loadProgressData();
+    } catch (error: any) {
+      console.error('Error saving drink log:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to save drink log';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const saveMoodLog = async (selectedMood: string) => {
+    if (!profile?.id || isAnonymous) {
+      Alert.alert('Authentication Required', 'Please create an account to track your mood.');
+      return;
+    }
+
+    try {
+      await api.logMood(selectedMood, selectedDate, moodNotes);
+      setMood(selectedMood);
+      setShowMoodModal(false);
+      Alert.alert('Success', 'Mood logged successfully');
+    } catch (error: any) {
+      console.error('Error saving mood log:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to save mood log';
+      Alert.alert('Error', errorMessage);
+    }
+  };
+
+  const saveTriggerLog = async () => {
+    if (!profile?.id || isAnonymous) {
+      Alert.alert('Authentication Required', 'Please create an account to track triggers.');
+      return;
+    }
+
+    if (!triggerType) {
+      Alert.alert('Missing Information', 'Please select a trigger type.');
+      return;
+    }
+
+    try {
+      await api.logTrigger(triggerType, triggerDescription, selectedDate);
+      setTriggerType('');
+      setTriggerDescription('');
+      setShowTriggerModal(false);
+      Alert.alert('Success', 'Trigger logged successfully');
+      // Reload progress data to update trigger analysis
+      loadProgressData();
+    } catch (error: any) {
+      console.error('Error saving trigger log:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to save trigger log';
+      Alert.alert('Error', errorMessage);
+      setShowTriggerModal(false);
+    }
+  };
 
   const loadProgressData = async () => {
     // In anonymous mode, show anonymous data
@@ -825,6 +962,111 @@ export default function ProgressScreen() {
       </LinearGradient>
 
       <ScrollView style={styles.content}>
+        {/* Tracking Section - Moved from Track Tab */}
+        {!isAnonymous ? (
+          <View style={styles.trackingSection}>
+            <Text style={styles.trackingSectionTitle}>Daily Tracking</Text>
+            
+            <View style={styles.dateSelector}>
+              <Calendar size={24} color="#4ECDC4" />
+              <Text style={styles.dateText}>{new Date(selectedDate).toLocaleDateString()}</Text>
+            </View>
+
+            <TouchableOpacity style={styles.cravingButton} onPress={() => setShowCravingModal(true)}>
+              <AlertTriangle size={24} color="#FFFFFF" />
+              <Text style={styles.cravingButtonText}>Having a Craving?</Text>
+            </TouchableOpacity>
+
+            <View style={styles.trackingRow}>
+              <View style={styles.trackingCard}>
+                <Text style={styles.trackingCardTitle}>Drink Count</Text>
+                <View style={styles.counterContainer}>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => setDrinksCount(Math.max(0, drinksCount - 1))}>
+                    <Minus size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <View style={styles.counterDisplay}>
+                    <Text style={styles.counterValue}>{drinksCount}</Text>
+                    <Text style={styles.counterLabel}>drinks</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => setDrinksCount(drinksCount + 1)}>
+                    <Plus size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={saveDrinkLog}
+                  disabled={trackingLoading}>
+                  {trackingLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <Save size={16} color="#FFFFFF" />
+                      <Text style={styles.saveButtonText}>Save</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.trackingCard}>
+                <Text style={styles.trackingCardTitle}>Mood</Text>
+                {mood ? (
+                  <View style={styles.moodSelected}>
+                    <Text style={styles.moodEmoji}>
+                      {moods.find((m) => m.value === mood)?.icon}
+                    </Text>
+                    <Text style={styles.moodLabel}>{moods.find((m) => m.value === mood)?.label}</Text>
+                  </View>
+                ) : null}
+                <TouchableOpacity 
+                  style={styles.moodButton}
+                  onPress={() => setShowMoodModal(true)}>
+                  <Text style={styles.moodButtonText}>
+                    {mood ? 'Update Mood' : 'Log Mood'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.trackingCard}>
+              <Text style={styles.trackingCardTitle}>Trigger Tracking</Text>
+              <Text style={styles.trackingCardDescription}>
+                Identify what led to drinking to better understand patterns
+              </Text>
+              <TouchableOpacity 
+                style={styles.triggerButton}
+                onPress={() => setShowTriggerModal(true)}>
+                <Text style={styles.triggerButtonText}>Log a Trigger</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Add notes about today..."
+              placeholderTextColor="#95A5A6"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+            />
+          </View>
+        ) : (
+          <View style={styles.trackingSection}>
+            <Text style={styles.trackingSectionTitle}>Daily Tracking</Text>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>🔒 Tracking Locked</Text>
+              <Text style={styles.cardDescription}>
+                Create an account to unlock daily tracking features including drink counting, mood logging, and trigger analysis.
+              </Text>
+              <TouchableOpacity style={styles.unlockButton} onPress={handleCreateAccount}>
+                <Text style={styles.unlockButtonText}>Create Account to Track</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <LinearGradient colors={['#FF6B6B', '#FF8E53']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
@@ -1059,6 +1301,106 @@ export default function ProgressScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Modals - Moved from Track Tab */}
+      <Modal visible={showCravingModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Craving Help</Text>
+              <TouchableOpacity onPress={() => setShowCravingModal(false)}>
+                <X size={24} color="#2C3E50" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalText}>
+              Take a deep breath. You're stronger than this craving.
+            </Text>
+
+            <View style={styles.helpTips}>
+              <Text style={styles.tipTitle}>Quick Tips:</Text>
+              <Text style={styles.tip}>• Drink a glass of water</Text>
+              <Text style={styles.tip}>• Take a 5-minute walk</Text>
+              <Text style={styles.tip}>• Call a friend or support person</Text>
+              <Text style={styles.tip}>• Practice deep breathing</Text>
+              <Text style={styles.tip}>• Engage in a hobby or activity</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setShowCravingModal(false)}>
+              <Text style={styles.modalButtonText}>I've Got This</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showMoodModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>How are you feeling?</Text>
+              <TouchableOpacity onPress={() => setShowMoodModal(false)}>
+                <X size={24} color="#2C3E50" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.moodGrid}>
+              {moods.map((moodOption) => (
+                <TouchableOpacity
+                  key={moodOption.value}
+                  style={[styles.moodOption, { backgroundColor: moodOption.color }]}
+                  onPress={() => saveMoodLog(moodOption.value)}>
+                  <Text style={styles.moodOptionEmoji}>{moodOption.icon}</Text>
+                  <Text style={styles.moodOptionLabel}>{moodOption.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showTriggerModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Log a Trigger</Text>
+              <TouchableOpacity onPress={() => setShowTriggerModal(false)}>
+                <X size={24} color="#2C3E50" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>What triggered you?</Text>
+            <View style={styles.triggerGrid}>
+              {triggers.map((trigger) => (
+                <TouchableOpacity
+                  key={trigger.value}
+                  style={[
+                    styles.triggerOption,
+                    { backgroundColor: trigger.color },
+                    triggerType === trigger.value && styles.triggerOptionSelected,
+                  ]}
+                  onPress={() => setTriggerType(trigger.value)}>
+                  <Text style={styles.triggerOptionLabel}>{trigger.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Describe the situation..."
+              placeholderTextColor="#95A5A6"
+              value={triggerDescription}
+              onChangeText={setTriggerDescription}
+              multiline
+            />
+
+            <TouchableOpacity style={styles.modalButton} onPress={saveTriggerLog}>
+              <Text style={styles.modalButtonText}>Save Trigger</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1546,5 +1888,295 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Tracking Section Styles (moved from track tab)
+  trackingSection: {
+    marginBottom: 24,
+  },
+  trackingSectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginLeft: 12,
+  },
+  cravingButton: {
+    backgroundColor: '#E74C3C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  cravingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  trackingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  trackingCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    flex: 1,
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  trackingCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  trackingCardDescription: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  counterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterButton: {
+    backgroundColor: '#4ECDC4',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterButtonText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  counterDisplay: {
+    alignItems: 'center',
+    marginHorizontal: 20,
+  },
+  counterValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  counterLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+  },
+  moodButton: {
+    backgroundColor: '#667EEA',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  moodButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  triggerButton: {
+    backgroundColor: '#667EEA',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  triggerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  notesInput: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#2C3E50',
+    minHeight: 60,
+    textAlignVertical: 'top',
+    marginTop: 16,
+  },
+  saveButton: {
+    backgroundColor: '#4ECDC4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  moodSelected: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  moodEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  moodLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  // Modal Styles (moved from track tab)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  modalText: {
+    fontSize: 18,
+    color: '#2C3E50',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  helpTips: {
+    backgroundColor: '#F5F7FA',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 24,
+  },
+  tipTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 12,
+  },
+  tip: {
+    fontSize: 14,
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  modalButton: {
+    backgroundColor: '#4ECDC4',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  moodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  moodOption: {
+    width: '48%',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  moodOptionEmoji: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  moodOptionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 12,
+  },
+  triggerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  triggerOption: {
+    width: '48%',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  triggerOptionSelected: {
+    borderWidth: 3,
+    borderColor: '#FFD700',
+  },
+  triggerOptionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalInput: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#2C3E50',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 16,
   },
 });
