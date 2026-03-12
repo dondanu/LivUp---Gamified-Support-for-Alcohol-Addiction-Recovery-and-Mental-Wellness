@@ -333,6 +333,11 @@ export default function ProgressScreen() {
   const [insights, setInsights] = useState<any>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
 
+  // Track History state
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   // Tracking states (moved from track tab)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [drinksCount, setDrinksCount] = useState(0);
@@ -394,15 +399,113 @@ export default function ProgressScreen() {
     }
   };
 
+  const loadTrackHistory = async () => {
+    if (!profile?.id || isAnonymous) return;
+
+    setHistoryLoading(true);
+    try {
+      // Get all logs
+      const [drinkLogsResponse, moodLogsResponse, triggerLogsResponse] = await Promise.all([
+        api.getDrinkLogs(),
+        api.getMoodLogs(),
+        api.getTriggerLogs(),
+      ]);
+
+      // Get user registration date
+      const registrationDate = profile?.created_at ? new Date(profile.created_at) : new Date();
+      registrationDate.setHours(0, 0, 0, 0);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Create a map for each log type
+      const drinkMap = new Map();
+      const moodMap = new Map();
+      const triggerMap = new Map();
+
+      drinkLogsResponse.logs?.forEach((log: any) => {
+        const logDate = log.log_date || log.date;
+        if (!logDate) return;
+        // Convert to local date string (YYYY-MM-DD)
+        const logDateObj = new Date(logDate);
+        const localDateStr = `${logDateObj.getFullYear()}-${String(logDateObj.getMonth() + 1).padStart(2, '0')}-${String(logDateObj.getDate()).padStart(2, '0')}`;
+        drinkMap.set(localDateStr, log);
+      });
+
+      moodLogsResponse.logs?.forEach((log: any) => {
+        const logDate = log.log_date || log.date;
+        if (!logDate) return;
+        // Convert to local date string (YYYY-MM-DD)
+        const logDateObj = new Date(logDate);
+        const localDateStr = `${logDateObj.getFullYear()}-${String(logDateObj.getMonth() + 1).padStart(2, '0')}-${String(logDateObj.getDate()).padStart(2, '0')}`;
+        moodMap.set(localDateStr, log);
+      });
+
+      triggerLogsResponse.logs?.forEach((log: any) => {
+        const logDate = log.log_date || log.date;
+        if (!logDate) return;
+        // Convert to local date string (YYYY-MM-DD)
+        const logDateObj = new Date(logDate);
+        const localDateStr = `${logDateObj.getFullYear()}-${String(logDateObj.getMonth() + 1).padStart(2, '0')}-${String(logDateObj.getDate()).padStart(2, '0')}`;
+        triggerMap.set(localDateStr, log);
+      });
+
+      // Build history array from registration to today
+      const history = [];
+      const currentDate = new Date(today);
+      
+      while (currentDate >= registrationDate) {
+        // Use local date string for lookup
+        const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+        const drinkLog = drinkMap.get(dateKey);
+        const moodLog = moodMap.get(dateKey);
+        const triggerLog = triggerMap.get(dateKey);
+
+        history.push({
+          date: dateKey,
+          displayDate: currentDate.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+          }),
+          drinkCount: drinkLog ? (drinkLog.drink_count ?? drinkLog.drinks_count ?? 'Not entered') : 'Not entered',
+          mood: moodLog ? (moodLog.mood_type || moodLog.mood || 'Not entered') : 'Not entered',
+          trigger: triggerLog ? (triggerLog.trigger_type || 'Not entered') : 'Not entered',
+        });
+
+        currentDate.setDate(currentDate.getDate() - 1);
+      }
+
+      setHistoryData(history);
+      setShowHistoryModal(true);
+    } catch (error) {
+      console.error('Error loading track history:', error);
+      Alert.alert('Error', 'Failed to load track history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const loadDayData = async () => {
     if (!profile?.id || isAnonymous) return;
 
     try {
+      console.log('[LoadDayData] Selected Date:', selectedDate);
+      
       const drinkLogsResponse = await api.getDrinkLogs();
+      console.log('[LoadDayData] Drink Logs Response:', drinkLogsResponse);
+      
       const drinkLog = drinkLogsResponse.logs?.find((log: any) => {
         const logDate = log.log_date || log.date;
-        return logDate === selectedDate;
+        if (!logDate) return false;
+        // Convert log date to local date string (YYYY-MM-DD) to match selectedDate
+        const logDateObj = new Date(logDate);
+        const localDateStr = `${logDateObj.getFullYear()}-${String(logDateObj.getMonth() + 1).padStart(2, '0')}-${String(logDateObj.getDate()).padStart(2, '0')}`;
+        console.log('[LoadDayData] Comparing:', { logDate, localDateStr, selectedDate, match: localDateStr === selectedDate });
+        return localDateStr === selectedDate;
       });
+
+      console.log('[LoadDayData] Found Drink Log:', drinkLog);
 
       if (drinkLog) {
         setDrinksCount(drinkLog.drink_count || drinkLog.drinks_count || 0);
@@ -413,10 +516,18 @@ export default function ProgressScreen() {
       }
 
       const moodLogsResponse = await api.getMoodLogs();
+      console.log('[LoadDayData] Mood Logs Response:', moodLogsResponse);
+      
       const moodLog = moodLogsResponse.logs?.find((log: any) => {
         const logDate = log.log_date || log.date;
-        return logDate === selectedDate;
+        if (!logDate) return false;
+        // Convert log date to local date string (YYYY-MM-DD) to match selectedDate
+        const logDateObj = new Date(logDate);
+        const localDateStr = `${logDateObj.getFullYear()}-${String(logDateObj.getMonth() + 1).padStart(2, '0')}-${String(logDateObj.getDate()).padStart(2, '0')}`;
+        return localDateStr === selectedDate;
       });
+
+      console.log('[LoadDayData] Found Mood Log:', moodLog);
 
       if (moodLog) {
         setMood(moodLog.mood_type || moodLog.mood);
@@ -987,11 +1098,25 @@ export default function ProgressScreen() {
         {/* Tracking Section - Moved from Track Tab */}
         {!isAnonymous ? (
           <View style={styles.trackingSection}>
-            <Text style={styles.trackingSectionTitle}>Daily Tracking</Text>
+            <View style={styles.trackingHeader}>
+              <Text style={styles.trackingSectionTitle}>Daily Tracking</Text>
+            </View>
             
             <View style={styles.dateSelector}>
-              <Calendar size={24} color="#4ECDC4" />
-              <Text style={styles.dateText}>{new Date(selectedDate).toLocaleDateString()}</Text>
+              <View style={styles.dateLeft}>
+                <Calendar size={24} color="#188fd4ff" />
+                <Text style={styles.dateText}>{new Date(selectedDate).toLocaleDateString()}</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.historyButton}
+                onPress={loadTrackHistory}
+                disabled={historyLoading}>
+                {historyLoading ? (
+                  <ActivityIndicator size="small" color="#4ECDC4" />
+                ) : (
+                  <Text style={styles.historyButtonText}>Track History →</Text>
+                )}
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity style={styles.cravingButton} onPress={() => setShowCravingModal(true)}>
@@ -1473,6 +1598,48 @@ export default function ProgressScreen() {
             <TouchableOpacity style={styles.modalButton} onPress={saveTriggerLog}>
               <Text style={styles.modalButtonText}>Save Trigger</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Track History Modal */}
+      <Modal visible={showHistoryModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.historyModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Track History</Text>
+              <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
+                <X size={24} color="#2C3E50" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.historyList}>
+              {historyData.map((item, index) => (
+                <View key={index} style={styles.historyItem}>
+                  <Text style={styles.historyDate}>{item.displayDate}</Text>
+                  <View style={styles.historyDetails}>
+                    <Text style={styles.historyText}>
+                      🍺 {item.drinkCount === 'Not entered' ? 'Not entered' : `${item.drinkCount} drink${item.drinkCount !== 1 ? 's' : ''}`}
+                    </Text>
+                    <Text style={styles.historySeparator}>|</Text>
+                    <Text style={styles.historyText}>
+                      {item.mood === 'Not entered' ? 'Not entered' : 
+                       item.mood === 'happy' ? '😊 Happy' :
+                       item.mood === 'sad' ? '😢 Sad' :
+                       item.mood === 'stressed' ? '😰 Stressed' :
+                       item.mood === 'anxious' ? '😟 Anxious' :
+                       item.mood === 'calm' ? '😌 Calm' :
+                       item.mood === 'energetic' ? '🤩 Energetic' : item.mood}
+                    </Text>
+                    <Text style={styles.historySeparator}>|</Text>
+                    <Text style={styles.historyText}>
+                      {item.trigger === 'Not entered' ? 'Not entered' : 
+                       `🎯 ${item.trigger.charAt(0).toUpperCase() + item.trigger.slice(1)}`}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1968,16 +2135,32 @@ const styles = StyleSheet.create({
   trackingSection: {
     marginBottom: 24,
   },
+  trackingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   trackingSectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#2C3E50',
-    marginBottom: 16,
-    textAlign: 'center',
+  },
+  historyButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f1eeeeff',
+    borderRadius: 8,
+  },
+  historyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
   },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
@@ -1987,6 +2170,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  dateLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   dateText: {
     fontSize: 18,
@@ -2077,8 +2264,13 @@ const styles = StyleSheet.create({
   },
   moodButton: {
     backgroundColor: '#667EEA',
-    padding: 12,
-    borderRadius: 8,
+    //padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 1,
+    //borderRadius: 8,
     alignItems: 'center',
   },
   moodButtonText: {
@@ -2114,7 +2306,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 8,
     borderRadius: 6,
-    marginTop: 8,
+    marginTop: 12.5,
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -2343,5 +2535,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  // Track History Modal Styles
+  historyModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  historyList: {
+    maxHeight: 500,
+  },
+  historyItem: {
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#4ECDC4',
+  },
+  historyDate: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  historyDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  historyText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginRight: 8,
+  },
+  historySeparator: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginRight: 8,
   },
 });
