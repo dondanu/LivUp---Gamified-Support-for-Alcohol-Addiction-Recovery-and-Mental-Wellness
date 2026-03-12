@@ -49,6 +49,8 @@ const getMoodLogs = async (req, res) => {
     const userId = req.user.userId;
     const { startDate, endDate, limit = 30 } = req.query;
 
+    console.log('[getMoodLogs] Request:', { userId, startDate, endDate, limit });
+
     let sql = 'SELECT * FROM mood_logs WHERE user_id = ?';
     const params = [userId];
 
@@ -61,13 +63,20 @@ const getMoodLogs = async (req, res) => {
       params.push(endDate);
     }
 
-    sql += ' ORDER BY log_date DESC LIMIT ?';
-    params.push(parseInt(limit));
+    // IMPORTANT: MySQL doesn't accept LIMIT as a parameter in prepared statements
+    const sanitizedLimit = Math.max(1, Math.min(parseInt(limit) || 30, 1000));
+    sql += ` ORDER BY log_date DESC LIMIT ${sanitizedLimit}`;
 
-    const { data } = await query(sql, params);
+    console.log('[getMoodLogs] SQL:', sql);
+    console.log('[getMoodLogs] Params:', params);
+
+    const { data, error } = await query(sql, params);
+
+    console.log('[getMoodLogs] Result:', { dataLength: data?.length, error: error?.message });
 
     res.status(200).json({ logs: data || [], count: (data || []).length });
   } catch (error) {
+    console.error('[getMoodLogs] Error:', error);
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 };
