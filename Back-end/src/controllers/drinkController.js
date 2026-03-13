@@ -68,10 +68,12 @@ const getDrinkLogs = async (req, res) => {
       params.push(endDate);
     }
 
+    sql += ' ORDER BY log_date DESC';
+    
     // IMPORTANT: MySQL doesn't accept LIMIT as a parameter in prepared statements
     // We need to add it directly to the SQL string (after sanitizing the value)
     const sanitizedLimit = Math.max(1, Math.min(parseInt(limit) || 30, 1000)); // Between 1 and 1000
-    sql += ` ORDER BY log_date DESC LIMIT ${sanitizedLimit}`;
+    sql += ` LIMIT ${sanitizedLimit}`;
 
     console.log('[getDrinkLogs] SQL:', sql);
     console.log('[getDrinkLogs] Params:', params);
