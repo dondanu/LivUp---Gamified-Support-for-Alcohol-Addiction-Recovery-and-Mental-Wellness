@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Ellipse, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
@@ -65,168 +66,43 @@ export default function JourneyScreen() {
         start={{x: 0, y: 0}} 
         end={{x: 1, y: 1}}
       >
-        {/* Left Forest - Colorful Trees with Fruits & Leaves */}
+        {/* Left Forest - PNG Tree Image */}
         <View style={styles.leftForest}>
-          <Svg width="140" height={height} style={{ position: 'absolute', left: 0, top: 0 }}>
-            {/* Tree Trunk - Brown */}
-            <Path
-              d={`M 50 ${height}
-                  L 52 ${height * 0.8}
-                  L 54 ${height * 0.6}
-                  L 56 ${height * 0.4}
-                  L 58 ${height * 0.2}
-                  L 60 0
-                  L 65 0
-                  L 67 ${height * 0.2}
-                  L 69 ${height * 0.4}
-                  L 71 ${height * 0.6}
-                  L 73 ${height * 0.8}
-                  L 75 ${height}
-                  Z`}
-              fill="#8B4513"
-              opacity="1"
-            />
-            
-            {/* Main Branch - Brown */}
-            <Path
-              d={`M 58 ${height * 0.4}
-                  L 45 ${height * 0.38}
-                  L 30 ${height * 0.35}
-                  L 15 ${height * 0.32}
-                  L 17 ${height * 0.34}
-                  L 32 ${height * 0.37}
-                  L 47 ${height * 0.40}
-                  L 60 ${height * 0.42}
-                  Z`}
-              fill="#8B4513"
-              opacity="1"
-            />
-            
-            {/* Right Branch - Brown */}
-            <Path
-              d={`M 67 ${height * 0.6}
-                  L 80 ${height * 0.58}
-                  L 95 ${height * 0.55}
-                  L 110 ${height * 0.52}
-                  L 125 ${height * 0.50}
-                  L 123 ${height * 0.52}
-                  L 108 ${height * 0.54}
-                  L 93 ${height * 0.57}
-                  L 78 ${height * 0.60}
-                  L 65 ${height * 0.62}
-                  Z`}
-              fill="#8B4513"
-              opacity="1"
-            />
-            
-            {/* Green Leaves Clusters */}
-            <Circle cx="25" cy={height * 0.30} r="15" fill="#228B22" opacity="0.9" />
-            <Circle cx="35" cy={height * 0.28} r="12" fill="#32CD32" opacity="0.9" />
-            <Circle cx="45" cy={height * 0.32} r="10" fill="#00FF00" opacity="0.8" />
-            
-            <Circle cx="115" cy={height * 0.48} r="18" fill="#228B22" opacity="0.9" />
-            <Circle cx="125" cy={height * 0.45} r="14" fill="#32CD32" opacity="0.9" />
-            <Circle cx="105" cy={height * 0.52} r="12" fill="#00FF00" opacity="0.8" />
-            
-            <Circle cx="70" cy={height * 0.15} r="20" fill="#228B22" opacity="0.9" />
-            <Circle cx="80" cy={height * 0.12} r="16" fill="#32CD32" opacity="0.9" />
-            <Circle cx="60" cy={height * 0.18} r="14" fill="#00FF00" opacity="0.8" />
-            
-            {/* Colorful Fruits */}
-            <Circle cx="30" cy={height * 0.32} r="4" fill="#FF0000" opacity="1" /> {/* Red Apple */}
-            <Circle cx="40" cy={height * 0.29} r="3" fill="#FF4500" opacity="1" /> {/* Orange */}
-            <Circle cx="50" cy={height * 0.34} r="3" fill="#FFD700" opacity="1" /> {/* Yellow Fruit */}
-            
-            <Circle cx="120" cy={height * 0.50} r="4" fill="#FF0000" opacity="1" /> {/* Red Apple */}
-            <Circle cx="110" cy={height * 0.47} r="3" fill="#FF69B4" opacity="1" /> {/* Pink Fruit */}
-            <Circle cx="130" cy={height * 0.52} r="3" fill="#FF4500" opacity="1" /> {/* Orange */}
-            
-            <Circle cx="75" cy={height * 0.17} r="4" fill="#FF0000" opacity="1" /> {/* Red Apple */}
-            <Circle cx="65" cy={height * 0.14} r="3" fill="#9370DB" opacity="1" /> {/* Purple Fruit */}
-            <Circle cx="85" cy={height * 0.20} r="3" fill="#FFD700" opacity="1" /> {/* Yellow Fruit */}
-          </Svg>
+          <Image 
+            source={require('../../assets/images/tree.png')} 
+            style={styles.leftTreeImage}
+            resizeMode="stretch"
+          />
         </View>
 
-        {/* Right Forest - Colorful Trees with Fruits & Leaves */}
+        {/* Right Forest - Better Colorful Trees */}
         <View style={styles.rightForest}>
-          <Svg width="140" height={height} style={{ position: 'absolute', right: 0, top: 0 }}>
-            {/* Tree Trunk - Brown */}
-            <Path
-              d={`M 65 ${height}
-                  L 67 ${height * 0.8}
-                  L 69 ${height * 0.6}
-                  L 71 ${height * 0.4}
-                  L 73 ${height * 0.2}
-                  L 75 0
-                  L 80 0
-                  L 82 ${height * 0.2}
-                  L 84 ${height * 0.4}
-                  L 86 ${height * 0.6}
-                  L 88 ${height * 0.8}
-                  L 90 ${height}
-                  Z`}
-              fill="#8B4513"
-              opacity="1"
-            />
-            
-            {/* Left Branch - Brown */}
-            <Path
-              d={`M 73 ${height * 0.4}
-                  L 60 ${height * 0.38}
-                  L 45 ${height * 0.35}
-                  L 30 ${height * 0.32}
-                  L 15 ${height * 0.30}
-                  L 17 ${height * 0.32}
-                  L 32 ${height * 0.34}
-                  L 47 ${height * 0.37}
-                  L 62 ${height * 0.40}
-                  L 75 ${height * 0.42}
-                  Z`}
-              fill="#8B4513"
-              opacity="1"
-            />
-            
-            {/* Right Branch - Brown */}
-            <Path
-              d={`M 82 ${height * 0.6}
-                  L 95 ${height * 0.58}
-                  L 110 ${height * 0.55}
-                  L 125 ${height * 0.52}
-                  L 127 ${height * 0.54}
-                  L 112 ${height * 0.57}
-                  L 97 ${height * 0.60}
-                  L 80 ${height * 0.62}
-                  Z`}
-              fill="#8B4513"
-              opacity="1"
-            />
-            
-            {/* Green Leaves Clusters */}
-            <Circle cx="25" cy={height * 0.28} r="16" fill="#228B22" opacity="0.9" />
-            <Circle cx="35" cy={height * 0.32} r="13" fill="#32CD32" opacity="0.9" />
-            <Circle cx="15" cy={height * 0.35} r="11" fill="#00FF00" opacity="0.8" />
-            
-            <Circle cx="115" cy={height * 0.50} r="17" fill="#228B22" opacity="0.9" />
-            <Circle cx="125" cy={height * 0.47} r="15" fill="#32CD32" opacity="0.9" />
-            <Circle cx="105" cy={height * 0.53} r="13" fill="#00FF00" opacity="0.8" />
-            
-            <Circle cx="85" cy={height * 0.15} r="19" fill="#228B22" opacity="0.9" />
-            <Circle cx="95" cy={height * 0.18} r="16" fill="#32CD32" opacity="0.9" />
-            <Circle cx="75" cy={height * 0.12} r="14" fill="#00FF00" opacity="0.8" />
-            
-            {/* Colorful Fruits */}
-            <Circle cx="30" cy={height * 0.30} r="4" fill="#FF0000" opacity="1" /> {/* Red Apple */}
-            <Circle cx="20" cy={height * 0.33} r="3" fill="#FF4500" opacity="1" /> {/* Orange */}
-            <Circle cx="40" cy={height * 0.35} r="3" fill="#FFD700" opacity="1" /> {/* Yellow Fruit */}
-            
-            <Circle cx="120" cy={height * 0.52} r="4" fill="#FF0000" opacity="1" /> {/* Red Apple */}
-            <Circle cx="110" cy={height * 0.49} r="3" fill="#FF69B4" opacity="1" /> {/* Pink Fruit */}
-            <Circle cx="130" cy={height * 0.55} r="3" fill="#9370DB" opacity="1" /> {/* Purple Fruit */}
-            
-            <Circle cx="90" cy={height * 0.17} r="4" fill="#FF0000" opacity="1" /> {/* Red Apple */}
-            <Circle cx="80" cy={height * 0.14} r="3" fill="#FFD700" opacity="1" /> {/* Yellow Fruit */}
-            <Circle cx="100" cy={height * 0.20} r="3" fill="#FF4500" opacity="1" /> {/* Orange */}
-          </Svg>
+          {/* Main Tree Trunk */}
+          <View style={[styles.treeTrunk, { right: 20, width: 25, height: height * 0.8, backgroundColor: '#8B4513' }]} />
+          
+          {/* Tree Branches */}
+          <View style={[styles.treeBranch, { right: 10, top: height * 0.3, width: 40, height: 8, backgroundColor: '#8B4513' }]} />
+          <View style={[styles.treeBranch, { right: 35, top: height * 0.25, width: 35, height: 6, backgroundColor: '#8B4513' }]} />
+          <View style={[styles.treeBranch, { right: 5, top: height * 0.4, width: 30, height: 6, backgroundColor: '#8B4513' }]} />
+          <View style={[styles.treeBranch, { right: 40, top: height * 0.35, width: 25, height: 5, backgroundColor: '#8B4513' }]} />
+          
+          {/* Green Leaves Clusters */}
+          <View style={[styles.leafCluster, { right: 5, top: height * 0.28, width: 20, height: 20, backgroundColor: '#228B22' }]} />
+          <View style={[styles.leafCluster, { right: 15, top: height * 0.32, width: 18, height: 18, backgroundColor: '#32CD32' }]} />
+          <View style={[styles.leafCluster, { right: 25, top: height * 0.30, width: 16, height: 16, backgroundColor: '#00FF00' }]} />
+          <View style={[styles.leafCluster, { right: 35, top: height * 0.23, width: 22, height: 22, backgroundColor: '#228B22' }]} />
+          <View style={[styles.leafCluster, { right: 45, top: height * 0.27, width: 20, height: 20, backgroundColor: '#32CD32' }]} />
+          <View style={[styles.leafCluster, { right: 0, top: height * 0.38, width: 18, height: 18, backgroundColor: '#00FF00' }]} />
+          <View style={[styles.leafCluster, { right: 40, top: height * 0.33, width: 16, height: 16, backgroundColor: '#228B22' }]} />
+          <View style={[styles.leafCluster, { right: 50, top: height * 0.37, width: 15, height: 15, backgroundColor: '#32CD32' }]} />
+          
+          {/* Colorful Fruits */}
+          <View style={[styles.fruit, { right: 12, top: height * 0.31, width: 6, height: 6, backgroundColor: '#FF0000' }]} />
+          <View style={[styles.fruit, { right: 22, top: height * 0.29, width: 5, height: 5, backgroundColor: '#FF4500' }]} />
+          <View style={[styles.fruit, { right: 38, top: height * 0.26, width: 5, height: 5, backgroundColor: '#FFD700' }]} />
+          <View style={[styles.fruit, { right: 48, top: height * 0.30, width: 6, height: 6, backgroundColor: '#FF69B4' }]} />
+          <View style={[styles.fruit, { right: 8, top: height * 0.40, width: 5, height: 5, backgroundColor: '#9370DB' }]} />
+          <View style={[styles.fruit, { right: 45, top: height * 0.35, width: 5, height: 5, backgroundColor: '#FF0000' }]} />
         </View>
 
         {/* Hanging Icicles */}
@@ -542,6 +418,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#322441ff',
     opacity: 0.8,
     borderRadius: 20,
+  },
+  treeTrunk: {
+    position: 'absolute',
+    borderRadius: 15,
+    opacity: 1,
+  },
+  leafCluster: {
+    position: 'absolute',
+    borderRadius: 50,
+    opacity: 0.9,
+  },
+  fruit: {
+    position: 'absolute',
+    borderRadius: 50,
+    opacity: 1,
+  },
+  leftTreeImage: {
+    position: 'absolute',
+    left: -20,
+    top: 0,
+    width: 160,
+    height: height * 0.9,
+    zIndex: 1,
   },
   icicleContainer: {
     position: 'absolute',
