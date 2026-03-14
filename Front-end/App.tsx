@@ -66,7 +66,7 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Track"
+        name="Journey"
         component={TrackScreen}
         options={{
           tabBarIcon: ({ size, color }) => <Activity size={size} color={color} />,

@@ -51,9 +51,11 @@ const getTriggerLogs = async (req, res) => {
       params.push(endDate);
     }
 
+    sql += ' ORDER BY log_date DESC';
+    
     // IMPORTANT: MySQL doesn't accept LIMIT as a parameter in prepared statements
     const sanitizedLimit = Math.max(1, Math.min(parseInt(limit) || 50, 1000));
-    sql += ` ORDER BY log_date DESC LIMIT ${sanitizedLimit}`;
+    sql += ` LIMIT ${sanitizedLimit}`;
 
     const { data } = await query(sql, params);
 
