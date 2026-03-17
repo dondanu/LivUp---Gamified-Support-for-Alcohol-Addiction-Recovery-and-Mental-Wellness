@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { register, login, getProfile } = require('../../src/controllers/authController');
-const { query, queryOne, transaction } = require('../../src/config/database');
+const { queryOne, transaction } = require('../../src/config/database');
 
 // Mock dependencies
 jest.mock('../../src/config/database');
@@ -47,7 +47,7 @@ describe('Auth Controller', () => {
         expect.objectContaining({
           message: 'User registered successfully',
           token: 'token123',
-        })
+        }),
       );
     });
 
@@ -102,7 +102,7 @@ describe('Auth Controller', () => {
         expect.objectContaining({
           message: 'Login successful',
           token: 'token123',
-        })
+        }),
       );
     });
 
@@ -155,7 +155,7 @@ describe('Auth Controller', () => {
         expect.objectContaining({
           user: expect.any(Object),
           profile: expect.any(Object),
-        })
+        }),
       );
     });
 

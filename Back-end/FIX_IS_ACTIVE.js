@@ -37,7 +37,9 @@ async function fixIsActive() {
     
   } catch (error) {
     console.error('❌ Error:', error.message);
-    if (connection) await connection.end();
+    if (connection) {
+      await connection.end();
+    }
     process.exit(1);
   }
 }

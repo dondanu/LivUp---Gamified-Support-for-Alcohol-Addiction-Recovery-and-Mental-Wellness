@@ -14,7 +14,7 @@ async function testConversionFlow() {
     const registerResponse = await axios.post(`${API_URL}/auth/register`, {
       username: `test_anon_${Date.now()}`,
       password: 'test123',
-      isAnonymous: true
+      isAnonymous: true,
     });
     
     anonymousToken = registerResponse.data.token;
@@ -29,7 +29,7 @@ async function testConversionFlow() {
     const taskResponse = await axios.post(
       `${API_URL}/tasks/complete`,
       { taskId: 1 },
-      { headers: { Authorization: `Bearer ${anonymousToken}` } }
+      { headers: { Authorization: `Bearer ${anonymousToken}` } },
     );
     
     console.log('✅ Task completed!');
@@ -50,9 +50,9 @@ async function testConversionFlow() {
       {
         email: `test${Date.now()}@example.com`,
         password: 'newpassword123',
-        username: `converted_user_${Date.now()}`
+        username: `converted_user_${Date.now()}`,
       },
-      { headers: { Authorization: `Bearer ${anonymousToken}` } }
+      { headers: { Authorization: `Bearer ${anonymousToken}` } },
     );
     
     convertedToken = convertResponse.data.token;
@@ -64,7 +64,7 @@ async function testConversionFlow() {
     // Step 4: Verify profile with new token
     console.log('\n📝 Step 4: Verifying profile with new token...');
     const profileResponse = await axios.get(`${API_URL}/auth/profile`, {
-      headers: { Authorization: `Bearer ${convertedToken}` }
+      headers: { Authorization: `Bearer ${convertedToken}` },
     });
     
     console.log('✅ Profile verified!');

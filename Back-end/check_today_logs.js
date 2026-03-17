@@ -20,7 +20,7 @@ async function checkTodayLogs() {
     console.log('🍺 DRINK LOGS:');
     const [drinkLogs] = await connection.execute(
       'SELECT * FROM drink_logs WHERE DATE(log_date) = ? ORDER BY log_date DESC',
-      [today]
+      [today],
     );
     console.log(`Found ${drinkLogs.length} drink logs for today:`);
     drinkLogs.forEach(log => {
@@ -32,7 +32,7 @@ async function checkTodayLogs() {
     console.log('😊 MOOD LOGS:');
     const [moodLogs] = await connection.execute(
       'SELECT * FROM mood_logs WHERE DATE(log_date) = ? ORDER BY log_date DESC',
-      [today]
+      [today],
     );
     console.log(`Found ${moodLogs.length} mood logs for today:`);
     moodLogs.forEach(log => {
@@ -44,7 +44,7 @@ async function checkTodayLogs() {
     console.log('🎯 TRIGGER LOGS:');
     const [triggerLogs] = await connection.execute(
       'SELECT * FROM trigger_logs WHERE DATE(log_date) = ? ORDER BY log_date DESC',
-      [today]
+      [today],
     );
     console.log(`Found ${triggerLogs.length} trigger logs for today:`);
     triggerLogs.forEach(log => {
@@ -55,7 +55,7 @@ async function checkTodayLogs() {
     // Check all drink logs (last 7 days)
     console.log('📊 ALL DRINK LOGS (Last 7 days):');
     const [allDrinkLogs] = await connection.execute(
-      'SELECT * FROM drink_logs WHERE log_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY log_date DESC'
+      'SELECT * FROM drink_logs WHERE log_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY log_date DESC',
     );
     console.log(`Found ${allDrinkLogs.length} drink logs in last 7 days:`);
     allDrinkLogs.forEach(log => {
@@ -66,7 +66,7 @@ async function checkTodayLogs() {
     // Check users
     console.log('👤 USERS:');
     const [users] = await connection.execute(
-      'SELECT id, username, email, created_at FROM users ORDER BY created_at DESC LIMIT 5'
+      'SELECT id, username, email, created_at FROM users ORDER BY created_at DESC LIMIT 5',
     );
     console.log(`Found ${users.length} recent users:`);
     users.forEach(user => {

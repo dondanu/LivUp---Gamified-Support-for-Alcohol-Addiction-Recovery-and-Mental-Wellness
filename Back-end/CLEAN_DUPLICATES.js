@@ -27,7 +27,7 @@ async function removeDuplicates() {
     
     if (duplicates.length > 0) {
       console.log('\nDuplicates found:');
-      duplicates.forEach((dup: any) => {
+      duplicates.forEach((dup) => {
         console.log(`  - ${dup.task_name}: ${dup.count} copies`);
       });
       
@@ -48,7 +48,7 @@ async function removeDuplicates() {
     const [total] = await connection.query('SELECT COUNT(*) as count FROM daily_tasks');
     const [unique] = await connection.query('SELECT COUNT(DISTINCT task_name) as count FROM daily_tasks');
     
-    console.log(`\n📊 Final counts:`);
+    console.log('\n📊 Final counts:');
     console.log(`   Total challenges: ${total[0].count}`);
     console.log(`   Unique challenges: ${unique[0].count}`);
     
@@ -67,7 +67,9 @@ async function removeDuplicates() {
     
   } catch (error) {
     console.error('❌ Error:', error.message);
-    if (connection) await connection.end();
+    if (connection) {
+      await connection.end();
+    }
     process.exit(1);
   }
 }

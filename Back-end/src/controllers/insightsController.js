@@ -4,7 +4,6 @@ const { query } = require('../config/database');
 const getSmartInsights = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const today = new Date().toISOString().split('T')[0];
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     // Get recent data
@@ -57,7 +56,6 @@ function analyzeUserData(drinkLogs, moodLogs, triggerLogs) {
   // Calculate basic stats
   const alcoholFreeDays = drinkLogs.filter((log) => log.drink_count === 0).length;
   const totalDrinks = drinkLogs.reduce((sum, log) => sum + log.drink_count, 0);
-  const avgDrinksPerDay = drinkLogs.length > 0 ? (totalDrinks / drinkLogs.length).toFixed(1) : 0;
 
   insights.stats.alcoholFreeDays = alcoholFreeDays;
   insights.stats.totalDrinks = totalDrinks;

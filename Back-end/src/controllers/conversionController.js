@@ -83,7 +83,7 @@ const convertAnonymousToRegistered = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Use transaction to ensure atomicity
-    const { data: success, error: txError } = await transaction(async (tx) => {
+    const { error: txError } = await transaction(async (tx) => {
       // Update user record
       const { error: updateError } = await tx.query(
         `UPDATE users 

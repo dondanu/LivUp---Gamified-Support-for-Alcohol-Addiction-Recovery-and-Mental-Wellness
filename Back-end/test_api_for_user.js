@@ -15,7 +15,7 @@ async function testAPIForUser() {
     // Get user ID for username "www"
     const [users] = await connection.execute(
       'SELECT id, username, email FROM users WHERE username = ?',
-      ['www']
+      ['www'],
     );
 
     if (users.length === 0) {
@@ -30,7 +30,7 @@ async function testAPIForUser() {
     const limit = 30;
     const [drinkLogs] = await connection.execute(
       'SELECT * FROM drink_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 30',
-      [userId]
+      [userId],
     );
 
     console.log(`🍺 DRINK LOGS (limit ${limit}):`);
@@ -46,7 +46,7 @@ async function testAPIForUser() {
     // Simulate getMoodLogs API call
     const [moodLogs] = await connection.execute(
       'SELECT * FROM mood_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 30',
-      [userId]
+      [userId],
     );
 
     console.log(`\n\n😊 MOOD LOGS (limit ${limit}):`);
@@ -61,7 +61,7 @@ async function testAPIForUser() {
     // Simulate getTriggerLogs API call
     const [triggerLogs] = await connection.execute(
       'SELECT * FROM trigger_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 30',
-      [userId]
+      [userId],
     );
 
     console.log(`\n\n🎯 TRIGGER LOGS (limit ${limit}):`);

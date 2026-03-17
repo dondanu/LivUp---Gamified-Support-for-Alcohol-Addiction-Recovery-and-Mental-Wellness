@@ -33,7 +33,9 @@ async function checkTasks() {
     await connection.end();
   } catch (error) {
     console.error('❌ Error:', error.message);
-    if (connection) await connection.end();
+    if (connection) {
+      await connection.end();
+    }
   }
 }
 
