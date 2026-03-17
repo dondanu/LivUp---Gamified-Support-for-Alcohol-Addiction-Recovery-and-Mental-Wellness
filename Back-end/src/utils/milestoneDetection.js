@@ -9,7 +9,7 @@ const { query, queryOne } = require('../config/database');
 /**
  * Detect if a milestone has been reached and if a conversion prompt should be shown
  * @param {string} userId - The user's ID
- * @param {string} eventType - Type of event: 'achievement_unlocked', 'challenge_completed', 
+ * @param {string} eventType - Type of event: 'achievement_unlocked', 'challenge_completed',
  *                              'points_earned', 'usage_days'
  * @param {object} eventData - Data about the event (e.g., { isFirstAchievement: true, totalPoints: 150, daysUsed: 3 })
  * @returns {Promise<{shouldShowPrompt: boolean, milestoneType: string|null, milestoneData: object}>}

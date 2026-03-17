@@ -13,10 +13,7 @@ async function testAPIForUser() {
     console.log('🔍 Testing API for user "www"...\n');
 
     // Get user ID for username "www"
-    const [users] = await connection.execute(
-      'SELECT id, username, email FROM users WHERE username = ?',
-      ['www'],
-    );
+    const [users] = await connection.execute('SELECT id, username, email FROM users WHERE username = ?', ['www']);
 
     if (users.length === 0) {
       console.log('❌ User "www" not found!');
@@ -72,7 +69,6 @@ async function testAPIForUser() {
       console.log(`    Trigger: ${log.trigger_type}`);
       console.log(`    Date: ${log.log_date}`);
     });
-
   } catch (error) {
     console.error('❌ Error:', error);
   } finally {

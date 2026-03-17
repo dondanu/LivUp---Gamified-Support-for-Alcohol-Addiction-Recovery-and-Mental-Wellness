@@ -10,7 +10,7 @@ async function checkTodayLogs() {
   });
 
   try {
-    console.log('🔍 Checking today\'s logs in database...\n');
+    console.log("🔍 Checking today's logs in database...\n");
 
     // Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
@@ -23,8 +23,10 @@ async function checkTodayLogs() {
       [today],
     );
     console.log(`Found ${drinkLogs.length} drink logs for today:`);
-    drinkLogs.forEach(log => {
-      console.log(`  - User ID: ${log.user_id}, Drink Count: ${log.drink_count}, Date: ${log.log_date}, Notes: ${log.notes || 'none'}`);
+    drinkLogs.forEach((log) => {
+      console.log(
+        `  - User ID: ${log.user_id}, Drink Count: ${log.drink_count}, Date: ${log.log_date}, Notes: ${log.notes || 'none'}`,
+      );
     });
     console.log('');
 
@@ -35,8 +37,10 @@ async function checkTodayLogs() {
       [today],
     );
     console.log(`Found ${moodLogs.length} mood logs for today:`);
-    moodLogs.forEach(log => {
-      console.log(`  - User ID: ${log.user_id}, Mood: ${log.mood_type}, Score: ${log.mood_score}, Date: ${log.log_date}, Notes: ${log.notes || 'none'}`);
+    moodLogs.forEach((log) => {
+      console.log(
+        `  - User ID: ${log.user_id}, Mood: ${log.mood_type}, Score: ${log.mood_score}, Date: ${log.log_date}, Notes: ${log.notes || 'none'}`,
+      );
     });
     console.log('');
 
@@ -47,8 +51,10 @@ async function checkTodayLogs() {
       [today],
     );
     console.log(`Found ${triggerLogs.length} trigger logs for today:`);
-    triggerLogs.forEach(log => {
-      console.log(`  - User ID: ${log.user_id}, Trigger: ${log.trigger_type}, Intensity: ${log.intensity}, Date: ${log.log_date}, Notes: ${log.notes || 'none'}`);
+    triggerLogs.forEach((log) => {
+      console.log(
+        `  - User ID: ${log.user_id}, Trigger: ${log.trigger_type}, Intensity: ${log.intensity}, Date: ${log.log_date}, Notes: ${log.notes || 'none'}`,
+      );
     });
     console.log('');
 
@@ -58,7 +64,7 @@ async function checkTodayLogs() {
       'SELECT * FROM drink_logs WHERE log_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY log_date DESC',
     );
     console.log(`Found ${allDrinkLogs.length} drink logs in last 7 days:`);
-    allDrinkLogs.forEach(log => {
+    allDrinkLogs.forEach((log) => {
       console.log(`  - User ID: ${log.user_id}, Drink Count: ${log.drink_count}, Date: ${log.log_date}`);
     });
     console.log('');
@@ -69,10 +75,9 @@ async function checkTodayLogs() {
       'SELECT id, username, email, created_at FROM users ORDER BY created_at DESC LIMIT 5',
     );
     console.log(`Found ${users.length} recent users:`);
-    users.forEach(user => {
+    users.forEach((user) => {
       console.log(`  - ID: ${user.id}, Username: ${user.username}, Email: ${user.email}, Created: ${user.created_at}`);
     });
-
   } catch (error) {
     console.error('❌ Error:', error);
   } finally {

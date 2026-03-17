@@ -22,15 +22,15 @@ async function removeDuplicates() {
       GROUP BY task_name 
       HAVING count > 1
     `);
-    
+
     console.log(`📊 Found ${duplicates.length} challenges with duplicates`);
-    
+
     if (duplicates.length > 0) {
       console.log('\nDuplicates found:');
       duplicates.forEach((dup) => {
         console.log(`  - ${dup.task_name}: ${dup.count} copies`);
       });
-      
+
       // Remove duplicates, keeping the one with the lowest ID (first inserted)
       const [result] = await connection.query(`
         DELETE t1 FROM daily_tasks t1
@@ -38,7 +38,7 @@ async function removeDuplicates() {
         WHERE t1.id > t2.id 
         AND t1.task_name = t2.task_name
       `);
-      
+
       console.log(`\n✅ Removed ${result.affectedRows} duplicate challenges`);
     } else {
       console.log('✅ No duplicates found!');
@@ -47,11 +47,11 @@ async function removeDuplicates() {
     // Verify final count
     const [total] = await connection.query('SELECT COUNT(*) as count FROM daily_tasks');
     const [unique] = await connection.query('SELECT COUNT(DISTINCT task_name) as count FROM daily_tasks');
-    
+
     console.log('\n📊 Final counts:');
     console.log(`   Total challenges: ${total[0].count}`);
     console.log(`   Unique challenges: ${unique[0].count}`);
-    
+
     if (total[0].count === unique[0].count && total[0].count === 25) {
       console.log('\n✅ Perfect! All 25 unique challenges are in the database.');
     } else if (total[0].count > 25) {
@@ -64,7 +64,6 @@ async function removeDuplicates() {
 
     await connection.end();
     console.log('\n✅ Done! Restart your backend server.');
-    
   } catch (error) {
     console.error('❌ Error:', error.message);
     if (connection) {
@@ -75,4 +74,3 @@ async function removeDuplicates() {
 }
 
 removeDuplicates();
-

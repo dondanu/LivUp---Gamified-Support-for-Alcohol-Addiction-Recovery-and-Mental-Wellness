@@ -15,7 +15,7 @@ async function testAPIResponse() {
     // Simulate what the API does - get drink logs for user 2
     const userId = 2;
     const today = '2026-03-11';
-    
+
     console.log(`📅 Looking for logs for User ID: ${userId}, Date: ${today}\n`);
 
     // Get all drink logs (what getDrinkLogs API returns)
@@ -78,7 +78,6 @@ async function testAPIResponse() {
     console.log(`Selected Date (from frontend): "${today}"`);
     console.log(`Log Date (from DB, split): "${new Date(drinkLogs[0].log_date).toISOString().split('T')[0]}"`);
     console.log(`Are they equal? ${today === new Date(drinkLogs[0].log_date).toISOString().split('T')[0]}`);
-
   } catch (error) {
     console.error('❌ Error:', error);
   } finally {

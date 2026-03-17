@@ -76,7 +76,6 @@ async function insertChallenges() {
 
     await connection.end();
     console.log('✅ Done! Restart your backend server and test the API.');
-    
   } catch (error) {
     console.error('❌ Error:', error.message);
     if (connection) {
@@ -87,4 +86,3 @@ async function insertChallenges() {
 }
 
 insertChallenges();
-

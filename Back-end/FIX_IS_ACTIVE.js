@@ -34,7 +34,6 @@ async function fixIsActive() {
 
     await connection.end();
     console.log('✅ Done! Now restart your backend server and test the API.');
-    
   } catch (error) {
     console.error('❌ Error:', error.message);
     if (connection) {
@@ -45,4 +44,3 @@ async function fixIsActive() {
 }
 
 fixIsActive();
-
