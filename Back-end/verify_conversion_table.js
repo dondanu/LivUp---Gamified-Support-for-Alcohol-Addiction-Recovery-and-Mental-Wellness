@@ -34,7 +34,7 @@ async function verifyTable() {
     console.log('-------------------');
     columns.forEach((col) => {
       console.log(
-        `${col.Field.padEnd(20)} | ${col.Type.padEnd(20)} | ${col.Null} | ${col.Key} | ${col.Default || 'NULL'}`,
+        `${col.Field.padEnd(20)} | ${col.Type.padEnd(20)} | ${col.Null} | ${col.Key} | ${col.Default || 'NULL'}`
       );
     });
 

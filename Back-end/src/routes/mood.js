@@ -14,7 +14,7 @@ router.post(
     body('logDate').optional().isISO8601().withMessage('Invalid date format'),
     validate,
   ],
-  logMood,
+  logMood
 );
 
 router.get('/logs', authenticateToken, getMoodLogs);

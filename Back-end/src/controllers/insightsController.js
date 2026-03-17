@@ -9,17 +9,17 @@ const getSmartInsights = async (req, res) => {
     // Get recent data
     const { data: drinkLogs } = await query(
       'SELECT * FROM drink_logs WHERE user_id = ? AND log_date >= ? ORDER BY log_date DESC',
-      [userId, sevenDaysAgo],
+      [userId, sevenDaysAgo]
     );
 
     const { data: moodLogs } = await query(
       'SELECT * FROM mood_logs WHERE user_id = ? AND log_date >= ? ORDER BY log_date DESC',
-      [userId, sevenDaysAgo],
+      [userId, sevenDaysAgo]
     );
 
     const { data: triggerLogs } = await query(
       'SELECT * FROM trigger_logs WHERE user_id = ? AND log_date >= ? ORDER BY log_date DESC',
-      [userId, sevenDaysAgo],
+      [userId, sevenDaysAgo]
     );
 
     // Analyze patterns and generate insights
@@ -76,7 +76,7 @@ function analyzeUserData(drinkLogs, moodLogs, triggerLogs) {
       triggerCounts[log.trigger_type] = (triggerCounts[log.trigger_type] || 0) + 1;
     });
     insights.stats.topTrigger = Object.keys(triggerCounts).reduce((a, b) =>
-      triggerCounts[a] > triggerCounts[b] ? a : b,
+      triggerCounts[a] > triggerCounts[b] ? a : b
     );
   }
 

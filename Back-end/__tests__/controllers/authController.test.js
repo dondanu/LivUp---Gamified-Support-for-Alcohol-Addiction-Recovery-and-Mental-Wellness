@@ -47,7 +47,7 @@ describe('Auth Controller', () => {
         expect.objectContaining({
           message: 'User registered successfully',
           token: 'token123',
-        }),
+        })
       );
     });
 
@@ -102,7 +102,7 @@ describe('Auth Controller', () => {
         expect.objectContaining({
           message: 'Login successful',
           token: 'token123',
-        }),
+        })
       );
     });
 
@@ -155,7 +155,7 @@ describe('Auth Controller', () => {
         expect.objectContaining({
           user: expect.any(Object),
           profile: expect.any(Object),
-        }),
+        })
       );
     });
 

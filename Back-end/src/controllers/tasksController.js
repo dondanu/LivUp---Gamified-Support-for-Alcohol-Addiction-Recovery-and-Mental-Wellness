@@ -155,7 +155,7 @@ const completeTask = async (req, res) => {
 
     const { data: existingCompletion } = await queryOne(
       'SELECT * FROM user_daily_tasks WHERE user_id = ? AND task_id = ? AND completion_date = ?',
-      [userId, taskId, date],
+      [userId, taskId, date]
     );
 
     if (existingCompletion) {
@@ -164,7 +164,7 @@ const completeTask = async (req, res) => {
 
     const { data: insertResult, error: insertError } = await query(
       'INSERT INTO user_daily_tasks (user_id, task_id, completion_date) VALUES (?, ?, ?)',
-      [userId, taskId, date],
+      [userId, taskId, date]
     );
 
     if (insertError || !insertResult) {
@@ -250,7 +250,7 @@ const getTodayProgress = async (req, res) => {
 
     const { data: completedToday } = await query(
       'SELECT udt.*, dt.* FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date = ?',
-      [userId, today],
+      [userId, today]
     );
     const { data: allTasks } = await query('SELECT * FROM daily_tasks WHERE is_active = 1', []);
 
@@ -276,7 +276,7 @@ const getTaskStatistics = async (req, res) => {
 
     const { data: completedTasks } = await query(
       'SELECT udt.*, dt.category, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ?',
-      [userId],
+      [userId]
     );
 
     const tasksArray = completedTasks || [];
@@ -316,7 +316,7 @@ const uncompleteTask = async (req, res) => {
 
     const { data: completion } = await queryOne(
       'SELECT udt.*, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.id = ? AND udt.user_id = ?',
-      [completionId, userId],
+      [completionId, userId]
     );
 
     if (!completion) {

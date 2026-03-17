@@ -49,16 +49,16 @@ const determineLevel = (points, levels) => {
 
 const checkAchievementEligibility = (userStats, achievement) => {
   switch (achievement.requirement_type) {
-  case 'days_sober':
-    return userStats.days_sober >= achievement.requirement_value;
-  case 'streak':
-    return userStats.current_streak >= achievement.requirement_value;
-  case 'tasks_completed':
-    return userStats.tasks_completed >= achievement.requirement_value;
-  case 'drinks_avoided':
-    return userStats.drinks_avoided >= achievement.requirement_value;
-  default:
-    return false;
+    case 'days_sober':
+      return userStats.days_sober >= achievement.requirement_value;
+    case 'streak':
+      return userStats.current_streak >= achievement.requirement_value;
+    case 'tasks_completed':
+      return userStats.tasks_completed >= achievement.requirement_value;
+    case 'drinks_avoided':
+      return userStats.drinks_avoided >= achievement.requirement_value;
+    default:
+      return false;
   }
 };
 
@@ -71,44 +71,44 @@ const getDateRange = (period) => {
   let endDate = new Date(today);
 
   switch (period) {
-  case 'week': {
-    const dayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon, ... 6 = Sat
-    const diffToMonday = (dayOfWeek + 6) % 7; // Sun -> 6, Mon -> 0, Tue ->1, ...
+    case 'week': {
+      const dayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon, ... 6 = Sat
+      const diffToMonday = (dayOfWeek + 6) % 7; // Sun -> 6, Mon -> 0, Tue ->1, ...
 
-    // Start: Monday of current week
-    startDate.setDate(today.getDate() - diffToMonday);
-    startDate.setHours(0, 0, 0, 0);
+      // Start: Monday of current week
+      startDate.setDate(today.getDate() - diffToMonday);
+      startDate.setHours(0, 0, 0, 0);
 
-    // End: Sunday of the same week (may be in the future)
-    endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6);
-    endDate.setHours(23, 59, 59, 999);
-    break;
-  }
-  case 'month': {
-    // Calendar month: from the 1st of the current month to the last day of the same month
-    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-    startDate.setHours(0, 0, 0, 0);
-    // Last day of current month: month+1, day 0 trick
-    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    endDate.setHours(23, 59, 59, 999);
-    break;
-  }
-  case 'year': {
-    startDate.setFullYear(today.getFullYear() - 1);
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
-    break;
-  }
-  default: {
-    const dayOfWeek = today.getDay();
-    const diffToMonday = (dayOfWeek + 6) % 7;
-    startDate.setDate(today.getDate() - diffToMonday);
-    startDate.setHours(0, 0, 0, 0);
-    endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6);
-    endDate.setHours(23, 59, 59, 999);
-  }
+      // End: Sunday of the same week (may be in the future)
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'month': {
+      // Calendar month: from the 1st of the current month to the last day of the same month
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      startDate.setHours(0, 0, 0, 0);
+      // Last day of current month: month+1, day 0 trick
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    }
+    case 'year': {
+      startDate.setFullYear(today.getFullYear() - 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    }
+    default: {
+      const dayOfWeek = today.getDay();
+      const diffToMonday = (dayOfWeek + 6) % 7;
+      startDate.setDate(today.getDate() - diffToMonday);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+    }
   }
 
   return {

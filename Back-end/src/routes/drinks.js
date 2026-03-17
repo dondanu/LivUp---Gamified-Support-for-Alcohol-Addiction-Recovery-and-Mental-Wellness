@@ -13,7 +13,7 @@ router.post(
     body('logDate').optional().isISO8601().withMessage('Invalid date format'),
     validate,
   ],
-  logDrink,
+  logDrink
 );
 
 router.get('/logs', authenticateToken, getDrinkLogs);

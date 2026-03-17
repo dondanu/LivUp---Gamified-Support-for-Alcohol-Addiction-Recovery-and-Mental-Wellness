@@ -9,7 +9,7 @@ const getUserSettings = async (req, res) => {
     if (!data) {
       const { data: insertResult } = await query(
         'INSERT INTO user_settings (user_id, notifications_enabled, reminder_frequency, theme) VALUES (?, ?, ?, ?)',
-        [userId, true, 'daily', 'light'],
+        [userId, true, 'daily', 'light']
       );
       const { data: newSettings } = await queryOne('SELECT * FROM user_settings WHERE id = ?', [insertResult.insertId]);
       return res.status(200).json({ settings: newSettings });

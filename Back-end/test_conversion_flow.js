@@ -29,7 +29,7 @@ async function testConversionFlow() {
     const taskResponse = await axios.post(
       `${API_URL}/tasks/complete`,
       { taskId: 1 },
-      { headers: { Authorization: `Bearer ${anonymousToken}` } },
+      { headers: { Authorization: `Bearer ${anonymousToken}` } }
     );
 
     console.log('✅ Task completed!');
@@ -52,7 +52,7 @@ async function testConversionFlow() {
         password: 'newpassword123',
         username: `converted_user_${Date.now()}`,
       },
-      { headers: { Authorization: `Bearer ${anonymousToken}` } },
+      { headers: { Authorization: `Bearer ${anonymousToken}` } }
     );
 
     convertedToken = convertResponse.data.token;

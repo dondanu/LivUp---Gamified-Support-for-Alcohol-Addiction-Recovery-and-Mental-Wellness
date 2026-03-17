@@ -22,7 +22,7 @@ const logTrigger = async (req, res) => {
 
     const { data: insertResult, error: insertError } = await query(
       'INSERT INTO trigger_logs (user_id, trigger_type, intensity, log_date, notes) VALUES (?, ?, ?, ?, ?)',
-      [userId, triggerType, intensity, date, notes || null],
+      [userId, triggerType, intensity, date, notes || null]
     );
 
     if (insertError || !insertResult) {
@@ -89,7 +89,7 @@ const getTriggerAnalysis = async (req, res) => {
     }, {});
 
     const mostCommonTrigger = Object.keys(triggerCounts).reduce((a, b) =>
-      triggerCounts[a] > triggerCounts[b] ? a : b,
+      triggerCounts[a] > triggerCounts[b] ? a : b
     );
 
     const triggerIntensities = logsArray.reduce((acc, log) => {
@@ -104,7 +104,7 @@ const getTriggerAnalysis = async (req, res) => {
     const triggerAverages = {};
     Object.keys(triggerIntensities).forEach((trigger) => {
       triggerAverages[trigger] = parseFloat(
-        (triggerIntensities[trigger].total / triggerIntensities[trigger].count).toFixed(2),
+        (triggerIntensities[trigger].total / triggerIntensities[trigger].count).toFixed(2)
       );
     });
 

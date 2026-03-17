@@ -33,51 +33,51 @@ async function detectMilestone(userId, eventType, eventData = {}) {
 
     // Determine milestone type based on event
     switch (eventType) {
-    case 'achievement_unlocked':
-      if (eventData.isFirstAchievement) {
-        milestoneType = 'first_achievement';
-        milestoneData = {
-          achievementName: eventData.achievementName || 'Your First Achievement',
-          pointsEarned: eventData.pointsEarned || 0,
-        };
-      }
-      break;
+      case 'achievement_unlocked':
+        if (eventData.isFirstAchievement) {
+          milestoneType = 'first_achievement';
+          milestoneData = {
+            achievementName: eventData.achievementName || 'Your First Achievement',
+            pointsEarned: eventData.pointsEarned || 0,
+          };
+        }
+        break;
 
-    case 'challenge_completed':
-      if (eventData.isFirstChallenge) {
-        milestoneType = 'first_challenge';
-        milestoneData = {
-          challengeName: eventData.challengeName || 'Your First Challenge',
-          pointsEarned: eventData.pointsEarned || 0,
-        };
-      }
-      break;
+      case 'challenge_completed':
+        if (eventData.isFirstChallenge) {
+          milestoneType = 'first_challenge';
+          milestoneData = {
+            challengeName: eventData.challengeName || 'Your First Challenge',
+            pointsEarned: eventData.pointsEarned || 0,
+          };
+        }
+        break;
 
-    case 'points_earned':
-      if (eventData.totalPoints >= 150) {
-        milestoneType = 'points_150';
-        milestoneData = {
-          totalPoints: eventData.totalPoints,
-        };
-      }
-      break;
+      case 'points_earned':
+        if (eventData.totalPoints >= 150) {
+          milestoneType = 'points_150';
+          milestoneData = {
+            totalPoints: eventData.totalPoints,
+          };
+        }
+        break;
 
-    case 'usage_days':
-      if (eventData.daysUsed === 3) {
-        milestoneType = 'usage_3_days';
-        milestoneData = {
-          daysUsed: 3,
-        };
-      } else if (eventData.daysUsed === 7) {
-        milestoneType = 'usage_7_days';
-        milestoneData = {
-          daysUsed: 7,
-        };
-      }
-      break;
+      case 'usage_days':
+        if (eventData.daysUsed === 3) {
+          milestoneType = 'usage_3_days';
+          milestoneData = {
+            daysUsed: 3,
+          };
+        } else if (eventData.daysUsed === 7) {
+          milestoneType = 'usage_7_days';
+          milestoneData = {
+            daysUsed: 7,
+          };
+        }
+        break;
 
-    default:
-      return { shouldShowPrompt: false, milestoneType: null, milestoneData: {} };
+      default:
+        return { shouldShowPrompt: false, milestoneType: null, milestoneData: {} };
     }
 
     // If no milestone was reached, return early
@@ -88,7 +88,7 @@ async function detectMilestone(userId, eventType, eventData = {}) {
     // Check if this prompt has already been shown
     const { data: existingPrompt, error: promptError } = await queryOne(
       'SELECT id FROM conversion_prompts WHERE user_id = ? AND milestone_type = ?',
-      [userId, milestoneType],
+      [userId, milestoneType]
     );
 
     if (promptError) {
@@ -126,7 +126,7 @@ async function recordPromptShown(userId, milestoneType, dismissed = false) {
       `INSERT INTO conversion_prompts (user_id, milestone_type, dismissed, shown_at)
        VALUES (?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE shown_at = NOW(), dismissed = ?`,
-      [userId, milestoneType, dismissed, dismissed],
+      [userId, milestoneType, dismissed, dismissed]
     );
 
     if (error) {

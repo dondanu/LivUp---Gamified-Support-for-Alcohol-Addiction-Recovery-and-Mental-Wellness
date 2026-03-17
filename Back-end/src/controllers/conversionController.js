@@ -44,7 +44,7 @@ const convertAnonymousToRegistered = async (req, res) => {
     // Get current user
     const { data: currentUser, error: userError } = await queryOne(
       'SELECT id, username, email, is_anonymous FROM users WHERE id = ?',
-      [userId],
+      [userId]
     );
 
     if (userError || !currentUser) {
@@ -89,7 +89,7 @@ const convertAnonymousToRegistered = async (req, res) => {
         `UPDATE users 
          SET email = ?, password_hash = ?, username = ?, is_anonymous = FALSE 
          WHERE id = ?`,
-        [email, hashedPassword, username, userId],
+        [email, hashedPassword, username, userId]
       );
 
       if (updateError) {

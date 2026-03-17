@@ -24,13 +24,13 @@ async function checkTasks() {
 
     // Check with boolean TRUE
     const [activeTasksBool] = await connection.query(
-      'SELECT COUNT(*) as count FROM daily_tasks WHERE is_active = TRUE',
+      'SELECT COUNT(*) as count FROM daily_tasks WHERE is_active = TRUE'
     );
     console.log(`✅ Active tasks (is_active = TRUE): ${activeTasksBool[0].count}`);
 
     // Check what is_active values actually are
     const [isActiveValues] = await connection.query(
-      'SELECT DISTINCT is_active, COUNT(*) as count FROM daily_tasks GROUP BY is_active',
+      'SELECT DISTINCT is_active, COUNT(*) as count FROM daily_tasks GROUP BY is_active'
     );
     console.log('📊 is_active value distribution:', JSON.stringify(isActiveValues, null, 2));
 

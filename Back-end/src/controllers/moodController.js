@@ -38,7 +38,7 @@ const logMood = async (req, res) => {
     } else {
       const { data: insertResult, error: insertError } = await query(
         'INSERT INTO mood_logs (user_id, mood_type, mood_score, log_date, notes) VALUES (?, ?, ?, ?, ?)',
-        [userId, moodType, moodScore, date, notes || null],
+        [userId, moodType, moodScore, date, notes || null]
       );
 
       if (insertError || !insertResult) {

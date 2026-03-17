@@ -22,7 +22,7 @@ router.post(
     body('completionDate').optional().isISO8601().withMessage('Invalid date format'),
     validate,
   ],
-  completeTask,
+  completeTask
 );
 
 router.get('/completed', authenticateToken, getUserCompletedTasks);

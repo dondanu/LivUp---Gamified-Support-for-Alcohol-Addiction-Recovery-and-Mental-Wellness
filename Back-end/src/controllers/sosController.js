@@ -39,7 +39,7 @@ const addSOSContact = async (req, res) => {
 
     const { data: insertResult, error: insertError } = await query(
       'INSERT INTO sos_contacts (user_id, contact_name, contact_phone, relationship, is_active) VALUES (?, ?, ?, ?, ?)',
-      [userId, contactName, contactPhone, relationship || null, true],
+      [userId, contactName, contactPhone, relationship || null, true]
     );
 
     if (insertError || !insertResult) {
@@ -60,7 +60,7 @@ const getSOSContacts = async (req, res) => {
 
     const { data } = await query(
       'SELECT * FROM sos_contacts WHERE user_id = ? AND is_active = 1 ORDER BY created_at DESC',
-      [userId],
+      [userId]
     );
 
     res.status(200).json({ contacts: data || [], count: (data || []).length });

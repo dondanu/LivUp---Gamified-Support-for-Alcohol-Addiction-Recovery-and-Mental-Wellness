@@ -14,7 +14,7 @@ router.post(
     body('email').optional().isEmail().withMessage('Invalid email format'),
     validate,
   ],
-  register,
+  register
 );
 
 router.post(
@@ -24,7 +24,7 @@ router.post(
     body('password').notEmpty().withMessage('Password is required'),
     validate,
   ],
-  login,
+  login
 );
 
 router.get('/profile', authenticateToken, getProfile);
@@ -38,7 +38,7 @@ router.post(
     body('username').trim().isLength({ min: 3 }).withMessage('Username must be at least 3 characters'),
     validate,
   ],
-  convertAnonymousToRegistered,
+  convertAnonymousToRegistered
 );
 
 module.exports = router;

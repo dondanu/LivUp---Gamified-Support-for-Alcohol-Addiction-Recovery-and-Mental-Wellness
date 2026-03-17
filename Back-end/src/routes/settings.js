@@ -16,7 +16,7 @@ router.put(
     body('theme').optional().isIn(['light', 'dark']).withMessage('Invalid theme'),
     validate,
   ],
-  updateUserSettings,
+  updateUserSettings
 );
 
 module.exports = router;

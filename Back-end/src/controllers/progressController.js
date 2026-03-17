@@ -13,20 +13,20 @@ const getWeeklyProgress = async (req, res) => {
 
     const { data: drinkLogs } = await query(
       'SELECT * FROM drink_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC',
-      [userId, actualStartDate, endDate],
+      [userId, actualStartDate, endDate]
     );
     const { data: completedTasks } = await query(
       'SELECT udt.*, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date >= ? AND udt.completion_date <= ?',
-      [userId, actualStartDate, endDate],
+      [userId, actualStartDate, endDate]
     );
     const { data: moodLogs } = await query(
       'SELECT * FROM mood_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC',
-      [userId, actualStartDate, endDate],
+      [userId, actualStartDate, endDate]
     );
     const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
     const { data: achievementsThisWeek } = await query(
       'SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ? AND DATE(ua.earned_at) >= ? AND DATE(ua.earned_at) <= ?',
-      [userId, actualStartDate, endDate],
+      [userId, actualStartDate, endDate]
     );
 
     const drinkLogsArray = drinkLogs || [];
@@ -73,19 +73,19 @@ const getMonthlyProgress = async (req, res) => {
 
     const { data: drinkLogs } = await query(
       'SELECT * FROM drink_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ? ORDER BY log_date ASC',
-      [userId, actualStartDate, endDate],
+      [userId, actualStartDate, endDate]
     );
     const { data: completedTasks } = await query(
       'SELECT udt.*, dt.points_reward, dt.category FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date >= ? AND udt.completion_date <= ?',
-      [userId, actualStartDate, endDate],
+      [userId, actualStartDate, endDate]
     );
     const { data: moodLogs } = await query(
       'SELECT * FROM mood_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ?',
-      [userId, actualStartDate, endDate],
+      [userId, actualStartDate, endDate]
     );
     const { data: triggerLogs } = await query(
       'SELECT * FROM trigger_logs WHERE user_id = ? AND log_date >= ? AND log_date <= ?',
-      [userId, actualStartDate, endDate],
+      [userId, actualStartDate, endDate]
     );
     const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
 
@@ -149,7 +149,7 @@ const getOverallProgress = async (req, res) => {
     const { data: allCompletedTasks } = await query('SELECT * FROM user_daily_tasks WHERE user_id = ?', [userId]);
     const { data: earnedAchievements } = await query(
       'SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ?',
-      [userId],
+      [userId]
     );
     const { data: allAchievements } = await query('SELECT * FROM achievements', []);
     const { data: currentLevel } = await queryOne('SELECT * FROM levels WHERE id = ?', [profile.level_id]);
@@ -204,11 +204,11 @@ const getDashboardData = async (req, res) => {
     ]);
     const { data: todayTasks } = await query(
       'SELECT udt.*, dt.* FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date = ?',
-      [userId, today],
+      [userId, today]
     );
     const { data: recentAchievements } = await query(
       'SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ? ORDER BY ua.earned_at DESC LIMIT 3',
-      [userId],
+      [userId]
     );
     const { data: quotes } = await query('SELECT * FROM motivational_quotes WHERE is_active = 1', []);
 

@@ -13,7 +13,7 @@ router.post(
     body('contactPhone').trim().notEmpty().withMessage('Contact phone is required'),
     validate,
   ],
-  addSOSContact,
+  addSOSContact
 );
 
 router.get('/contacts', authenticateToken, getSOSContacts);
@@ -22,7 +22,7 @@ router.put(
   '/contact/:contactId',
   authenticateToken,
   [body('contactName').optional().trim().notEmpty(), body('contactPhone').optional().trim().notEmpty(), validate],
-  updateSOSContact,
+  updateSOSContact
 );
 
 router.delete('/contact/:contactId', authenticateToken, deleteSOSContact);

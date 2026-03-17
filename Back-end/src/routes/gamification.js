@@ -18,7 +18,7 @@ router.post(
   '/points',
   authenticateToken,
   [body('points').isInt({ min: 1 }).withMessage('Points must be a positive integer'), validate],
-  updateUserPoints,
+  updateUserPoints
 );
 
 router.get('/levels', getLevels);
@@ -31,7 +31,7 @@ router.put(
   '/avatar',
   authenticateToken,
   [body('avatarType').trim().notEmpty().withMessage('Avatar type is required'), validate],
-  updateAvatar,
+  updateAvatar
 );
 
 module.exports = router;

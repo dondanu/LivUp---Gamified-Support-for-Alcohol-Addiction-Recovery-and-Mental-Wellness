@@ -18,7 +18,7 @@ const getUserProfile = async (req, res) => {
 
     const { data: userAchievements } = await query(
       'SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ?',
-      [userId],
+      [userId]
     );
 
     res.status(200).json({
@@ -28,9 +28,9 @@ const getUserProfile = async (req, res) => {
       achievements: userAchievements || [],
       progressToNextLevel: nextLevel
         ? (
-          ((profile.total_points - level.points_required) / (nextLevel.points_required - level.points_required)) *
+            ((profile.total_points - level.points_required) / (nextLevel.points_required - level.points_required)) *
             100
-        ).toFixed(2)
+          ).toFixed(2)
         : 100,
     });
   } catch (error) {
@@ -70,7 +70,7 @@ const updateUserPoints = async (req, res) => {
 
     await query(
       'UPDATE user_profiles SET total_points = ?, level_id = ?, avatar_type = ?, updated_at = ? WHERE user_id = ?',
-      [newTotalPoints, newLevel.id, newLevel.avatar_unlock, new Date().toISOString(), userId],
+      [newTotalPoints, newLevel.id, newLevel.avatar_unlock, new Date().toISOString(), userId]
     );
 
     const { data: updatedProfile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
@@ -191,7 +191,7 @@ const checkAndAwardAchievements = async (req, res) => {
         // Update user points
         const { error: pointsError } = await tx.query(
           'UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?',
-          [profile.total_points + totalPointsAwarded, new Date().toISOString(), userId],
+          [profile.total_points + totalPointsAwarded, new Date().toISOString(), userId]
         );
         if (pointsError) {
           throw new Error('Failed to update points: ' + pointsError.message);

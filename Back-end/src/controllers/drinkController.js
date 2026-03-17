@@ -29,7 +29,7 @@ const logDrink = async (req, res) => {
     } else {
       const { data: insertResult, error: insertError } = await query(
         'INSERT INTO drink_logs (user_id, drink_count, log_date, notes) VALUES (?, ?, ?, ?)',
-        [userId, drinkCount, date, notes || null],
+        [userId, drinkCount, date, notes || null]
       );
 
       if (insertError || !insertResult) {
@@ -55,7 +55,7 @@ const logDrink = async (req, res) => {
 
     await query(
       'UPDATE user_profiles SET current_streak = ?, longest_streak = ?, days_sober = ?, total_points = ?, updated_at = ? WHERE user_id = ?',
-      [currentStreak, longestStreak, totalSoberDays, newTotalPoints, new Date().toISOString(), userId],
+      [currentStreak, longestStreak, totalSoberDays, newTotalPoints, new Date().toISOString(), userId]
     );
 
     res.status(200).json({

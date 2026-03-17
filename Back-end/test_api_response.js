@@ -21,7 +21,7 @@ async function testAPIResponse() {
     // Get all drink logs (what getDrinkLogs API returns)
     const [drinkLogs] = await connection.execute(
       'SELECT * FROM drink_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 30',
-      [userId],
+      [userId]
     );
 
     console.log('🍺 DRINK LOGS FROM API:');
@@ -41,7 +41,7 @@ async function testAPIResponse() {
     // Get mood logs
     const [moodLogs] = await connection.execute(
       'SELECT * FROM mood_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 30',
-      [userId],
+      [userId]
     );
 
     console.log('\n\n😊 MOOD LOGS FROM API:');
@@ -59,7 +59,7 @@ async function testAPIResponse() {
     // Get trigger logs
     const [triggerLogs] = await connection.execute(
       'SELECT * FROM trigger_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 30',
-      [userId],
+      [userId]
     );
 
     console.log('\n\n🎯 TRIGGER LOGS FROM API:');

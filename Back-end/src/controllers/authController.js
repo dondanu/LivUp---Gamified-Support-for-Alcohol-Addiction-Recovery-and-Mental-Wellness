@@ -35,7 +35,7 @@ const register = async (req, res) => {
       // Insert user
       const { data: insertResult, error: userError } = await tx.query(
         'INSERT INTO users (email, password_hash, username, is_anonymous) VALUES (?, ?, ?, ?)',
-        [email || null, hashedPassword, username, isAnonymous],
+        [email || null, hashedPassword, username, isAnonymous]
       );
 
       if (userError) {
@@ -47,7 +47,7 @@ const register = async (req, res) => {
       // Create user profile
       const { error: profileError } = await tx.query(
         'INSERT INTO user_profiles (user_id, total_points, current_streak, longest_streak, level_id, avatar_type, days_sober) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [newUserId, 0, 0, 0, 1, 'basic', 0],
+        [newUserId, 0, 0, 0, 1, 'basic', 0]
       );
 
       if (profileError) {
@@ -57,7 +57,7 @@ const register = async (req, res) => {
       // Create user settings
       const { error: settingsError } = await tx.query(
         'INSERT INTO user_settings (user_id, notifications_enabled, reminder_frequency, theme) VALUES (?, ?, ?, ?)',
-        [newUserId, true, 'daily', 'light'],
+        [newUserId, true, 'daily', 'light']
       );
 
       if (settingsError) {
@@ -144,7 +144,7 @@ const getProfile = async (req, res) => {
 
     const { data: user } = await queryOne(
       'SELECT id, username, email, is_anonymous, created_at FROM users WHERE id = ?',
-      [userId],
+      [userId]
     );
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
