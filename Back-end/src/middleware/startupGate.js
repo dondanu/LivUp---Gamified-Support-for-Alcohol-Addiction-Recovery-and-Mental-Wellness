@@ -17,14 +17,14 @@ function startupGate(req, res, next) {
       return res.status(503).json({
         error: 'Database initialization failed',
         message: 'The server is experiencing database issues. Please try again later.',
-        retryAfter: 30
+        retryAfter: 30,
       });
     }
-    
+
     return res.status(503).json({
       error: 'Service starting up',
       message: 'The server is initializing. Please try again in a few seconds.',
-      retryAfter: 5
+      retryAfter: 5,
     });
   }
 

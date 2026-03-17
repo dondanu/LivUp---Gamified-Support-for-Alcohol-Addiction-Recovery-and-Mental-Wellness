@@ -14,37 +14,37 @@ const convertAnonymousToRegistered = async (req, res) => {
 
     // Validate required fields
     if (!email || !password || !username) {
-      return res.status(400).json({ 
-        error: 'Email, password, and username are required' 
+      return res.status(400).json({
+        error: 'Email, password, and username are required',
       });
     }
 
     // Validate email format (basic check)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
-        error: 'Invalid email format' 
+      return res.status(400).json({
+        error: 'Invalid email format',
       });
     }
 
     // Validate password length
     if (password.length < 6) {
-      return res.status(400).json({ 
-        error: 'Password must be at least 6 characters' 
+      return res.status(400).json({
+        error: 'Password must be at least 6 characters',
       });
     }
 
     // Validate username length
     if (username.length < 3) {
-      return res.status(400).json({ 
-        error: 'Username must be at least 3 characters' 
+      return res.status(400).json({
+        error: 'Username must be at least 3 characters',
       });
     }
 
     // Get current user
     const { data: currentUser, error: userError } = await queryOne(
       'SELECT id, username, email, is_anonymous FROM users WHERE id = ?',
-      [userId]
+      [userId],
     );
 
     if (userError || !currentUser) {
@@ -53,32 +53,29 @@ const convertAnonymousToRegistered = async (req, res) => {
 
     // Check if user is anonymous
     if (!currentUser.is_anonymous) {
-      return res.status(403).json({ 
-        error: 'User is already registered' 
+      return res.status(403).json({
+        error: 'User is already registered',
       });
     }
 
     // Check if email already exists
-    const { data: existingEmail } = await queryOne(
-      'SELECT id FROM users WHERE email = ? AND id != ?',
-      [email, userId]
-    );
+    const { data: existingEmail } = await queryOne('SELECT id FROM users WHERE email = ? AND id != ?', [email, userId]);
 
     if (existingEmail) {
-      return res.status(409).json({ 
-        error: 'Email already exists' 
+      return res.status(409).json({
+        error: 'Email already exists',
       });
     }
 
     // Check if username already exists
-    const { data: existingUsername } = await queryOne(
-      'SELECT id FROM users WHERE username = ? AND id != ?',
-      [username, userId]
-    );
+    const { data: existingUsername } = await queryOne('SELECT id FROM users WHERE username = ? AND id != ?', [
+      username,
+      userId,
+    ]);
 
     if (existingUsername) {
-      return res.status(409).json({ 
-        error: 'Username already exists' 
+      return res.status(409).json({
+        error: 'Username already exists',
       });
     }
 
@@ -92,7 +89,7 @@ const convertAnonymousToRegistered = async (req, res) => {
         `UPDATE users 
          SET email = ?, password_hash = ?, username = ?, is_anonymous = FALSE 
          WHERE id = ?`,
-        [email, hashedPassword, username, userId]
+        [email, hashedPassword, username, userId],
       );
 
       if (updateError) {
@@ -104,9 +101,9 @@ const convertAnonymousToRegistered = async (req, res) => {
 
     if (txError) {
       console.error('Transaction error during conversion:', txError);
-      return res.status(500).json({ 
-        error: 'Failed to convert account', 
-        details: txError.message 
+      return res.status(500).json({
+        error: 'Failed to convert account',
+        details: txError.message,
       });
     }
 
@@ -114,11 +111,7 @@ const convertAnonymousToRegistered = async (req, res) => {
     await clearPromptTracking(userId);
 
     // Generate new JWT token with updated user info
-    const token = jwt.sign(
-      { userId: userId, username: username },
-      process.env.JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const token = jwt.sign({ userId: userId, username: username }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
     // Return success response
     res.status(200).json({
@@ -128,18 +121,18 @@ const convertAnonymousToRegistered = async (req, res) => {
         id: userId,
         username: username,
         email: email,
-        isAnonymous: false
-      }
+        isAnonymous: false,
+      },
     });
   } catch (error) {
     console.error('Error in convertAnonymousToRegistered:', error);
-    res.status(500).json({ 
-      error: 'Server error', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Server error',
+      details: error.message,
     });
   }
 };
 
 module.exports = {
-  convertAnonymousToRegistered
+  convertAnonymousToRegistered,
 };

@@ -6,18 +6,18 @@ const getDailyTasks = async (req, res) => {
   try {
     // Validate and sanitize parameters
     const { category, limit = 20 } = req.query;
-    
+
     // Validate limit parameter
     const limitValue = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
-    
+
     // Validate category parameter if provided
     if (category && (typeof category !== 'string' || category.trim().length === 0)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid category parameter',
-        message: 'Category must be a non-empty string'
+        message: 'Category must be a non-empty string',
       });
     }
-    
+
     // Verify table exists
     const tableExists = await verifyTableExists('daily_tasks');
     if (!tableExists) {
@@ -25,10 +25,10 @@ const getDailyTasks = async (req, res) => {
       return res.status(503).json({
         error: 'Database not ready',
         message: 'The challenges system is initializing. Please try again in a moment.',
-        retryAfter: 10
+        retryAfter: 10,
       });
     }
-    
+
     // Build query
     let sql = 'SELECT * FROM daily_tasks';
     const params = [];
@@ -43,10 +43,10 @@ const getDailyTasks = async (req, res) => {
     sql += ` ORDER BY points_reward DESC LIMIT ${limitValue}`;
 
     console.log(`[Tasks] Executing query: ${sql}`, `Params: [${params.join(', ')}]`);
-    
+
     const result = await query(sql, params);
     const { data, error } = result;
-    
+
     if (error) {
       console.error('[Tasks] Query error:', {
         message: error.message,
@@ -55,55 +55,61 @@ const getDailyTasks = async (req, res) => {
         sql: error.sql,
         sqlState: error.sqlState,
         sqlMessage: error.sqlMessage,
-        stack: error.stack
+        stack: error.stack,
       });
-      
-      return res.status(500).json({ 
-        error: 'Database query failed', 
+
+      return res.status(500).json({
+        error: 'Database query failed',
         message: 'Failed to retrieve challenges. Please try again.',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
     }
-    
+
     if (!data) {
       console.error('[Tasks] Query returned null/undefined data', {
         sql,
         params,
-        result
+        result,
       });
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Database query returned no data',
         message: 'An unexpected error occurred. Please try again.',
-        details: process.env.NODE_ENV === 'development' ? 'Query returned null/undefined' : undefined
+        details: process.env.NODE_ENV === 'development' ? 'Query returned null/undefined' : undefined,
       });
     }
-    
+
     console.log(`[Tasks] Raw data from query: Array of ${data.length} items`);
     if (data.length > 0) {
-      console.log(`[Tasks] First task sample:`, JSON.stringify(data[0], null, 2));
+      console.log('[Tasks] First task sample:', JSON.stringify(data[0], null, 2));
     }
-    
+
     // Filter active tasks in code (handle both 1/0, TRUE/FALSE, and NULL)
-    const activeTasks = (data || []).filter(task => {
+    const activeTasks = (data || []).filter((task) => {
       const isActive = task.is_active;
-      const isActiveValue = isActive === 1 || isActive === true || isActive === '1' || isActive === 'TRUE' || isActive === null || isActive === undefined;
+      const isActiveValue =
+        isActive === 1 ||
+        isActive === true ||
+        isActive === '1' ||
+        isActive === 'TRUE' ||
+        isActive === null ||
+        isActive === undefined;
       return isActiveValue;
     });
-    
+
     console.log(`[Tasks] Found ${activeTasks.length} active tasks from ${(data || []).length} total tasks`);
-    
+
     // Map active tasks to challenges format for frontend compatibility
     // Remove duplicates by task_name (keep the one with highest points or first occurrence)
     const taskMap = new Map();
-    activeTasks.forEach(task => {
+    activeTasks.forEach((task) => {
       const title = task.task_name;
       if (!taskMap.has(title) || (taskMap.get(title).points_reward || 0) < (task.points_reward || 0)) {
         taskMap.set(title, task);
       }
     });
-    
+
     const uniqueTasks = Array.from(taskMap.values());
-    const tasks = uniqueTasks.map(task => ({
+    const tasks = uniqueTasks.map((task) => ({
       id: task.id.toString(),
       title: task.task_name,
       description: task.description,
@@ -111,21 +117,21 @@ const getDailyTasks = async (req, res) => {
       difficulty: task.difficulty || 'Easy',
       category: task.category,
       is_active: task.is_active,
-      created_at: task.created_at
+      created_at: task.created_at,
     }));
-    
+
     console.log(`[Tasks] Returning ${tasks.length} unique challenges`);
     res.status(200).json({ tasks, challenges: tasks, count: tasks.length });
   } catch (error) {
     console.error('[Tasks] Unexpected error in getDailyTasks:', {
       message: error.message,
       stack: error.stack,
-      name: error.name
+      name: error.name,
     });
-    res.status(500).json({ 
-      error: 'Server error', 
+    res.status(500).json({
+      error: 'Server error',
       message: 'An unexpected error occurred. Please try again.',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 };
@@ -147,25 +153,35 @@ const completeTask = async (req, res) => {
 
     const date = completionDate || new Date().toISOString().split('T')[0];
 
-    const { data: existingCompletion } = await queryOne('SELECT * FROM user_daily_tasks WHERE user_id = ? AND task_id = ? AND completion_date = ?', [userId, taskId, date]);
+    const { data: existingCompletion } = await queryOne(
+      'SELECT * FROM user_daily_tasks WHERE user_id = ? AND task_id = ? AND completion_date = ?',
+      [userId, taskId, date],
+    );
 
     if (existingCompletion) {
       return res.status(409).json({ error: 'Task already completed for this date' });
     }
 
-    const { data: insertResult, error: insertError } = await query('INSERT INTO user_daily_tasks (user_id, task_id, completion_date) VALUES (?, ?, ?)', [userId, taskId, date]);
-    
+    const { data: insertResult, error: insertError } = await query(
+      'INSERT INTO user_daily_tasks (user_id, task_id, completion_date) VALUES (?, ?, ?)',
+      [userId, taskId, date],
+    );
+
     if (insertError || !insertResult) {
       return res.status(500).json({ error: 'Failed to complete task', details: insertError?.message });
     }
-    
+
     const { data: completion } = await queryOne('SELECT * FROM user_daily_tasks WHERE id = ?', [insertResult.insertId]);
 
     const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
 
     const newTotalPoints = profile.total_points + task.points_reward;
 
-    await query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [newTotalPoints, new Date().toISOString(), userId]);
+    await query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [
+      newTotalPoints,
+      new Date().toISOString(),
+      userId,
+    ]);
 
     // Check for first challenge completion milestone
     const { data: allCompletedTasks } = await query('SELECT id FROM user_daily_tasks WHERE user_id = ?', [userId]);
@@ -176,7 +192,7 @@ const completeTask = async (req, res) => {
       const milestone = await detectMilestone(userId, 'challenge_completed', {
         isFirstChallenge: true,
         challengeName: task.task_name,
-        pointsEarned: task.points_reward
+        pointsEarned: task.points_reward,
       });
 
       if (milestone.shouldShowPrompt) {
@@ -186,12 +202,12 @@ const completeTask = async (req, res) => {
       }
     }
 
-    res.status(201).json({ 
-      message: 'Task completed successfully', 
-      completion, 
-      pointsEarned: task.points_reward, 
+    res.status(201).json({
+      message: 'Task completed successfully',
+      completion,
+      pointsEarned: task.points_reward,
       totalPoints: newTotalPoints,
-      conversionPrompt
+      conversionPrompt,
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
@@ -203,7 +219,8 @@ const getUserCompletedTasks = async (req, res) => {
     const userId = req.user.userId;
     const { startDate, endDate, limit = 50 } = req.query;
 
-    let sql = 'SELECT udt.*, dt.* FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ?';
+    let sql =
+      'SELECT udt.*, dt.* FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ?';
     const params = [userId];
 
     if (startDate) {
@@ -231,14 +248,23 @@ const getTodayProgress = async (req, res) => {
     const userId = req.user.userId;
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: completedToday } = await query('SELECT udt.*, dt.* FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date = ?', [userId, today]);
+    const { data: completedToday } = await query(
+      'SELECT udt.*, dt.* FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ? AND udt.completion_date = ?',
+      [userId, today],
+    );
     const { data: allTasks } = await query('SELECT * FROM daily_tasks WHERE is_active = 1', []);
 
-    const completedTaskIds = new Set((completedToday || []).map(ct => ct.task_id));
-    const availableTasks = (allTasks || []).filter(task => !completedTaskIds.has(task.id));
+    const completedTaskIds = new Set((completedToday || []).map((ct) => ct.task_id));
+    const availableTasks = (allTasks || []).filter((task) => !completedTaskIds.has(task.id));
     const totalPointsEarnedToday = (completedToday || []).reduce((sum, ct) => sum + (ct.points_reward || 0), 0);
 
-    res.status(200).json({ today, completedTasks: completedToday || [], availableTasks, completedCount: (completedToday || []).length, totalPointsEarnedToday });
+    res.status(200).json({
+      today,
+      completedTasks: completedToday || [],
+      availableTasks,
+      completedCount: (completedToday || []).length,
+      totalPointsEarnedToday,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
@@ -248,7 +274,10 @@ const getTaskStatistics = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const { data: completedTasks } = await query('SELECT udt.*, dt.category, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ?', [userId]);
+    const { data: completedTasks } = await query(
+      'SELECT udt.*, dt.category, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.user_id = ?',
+      [userId],
+    );
 
     const tasksArray = completedTasks || [];
     const totalTasksCompleted = tasksArray.length;
@@ -265,9 +294,16 @@ const getTaskStatistics = async (req, res) => {
     last7Days.setDate(last7Days.getDate() - 7);
     const last7DaysStr = last7Days.toISOString().split('T')[0];
 
-    const recentTasks = tasksArray.filter(task => task.completion_date >= last7DaysStr);
+    const recentTasks = tasksArray.filter((task) => task.completion_date >= last7DaysStr);
 
-    res.status(200).json({ statistics: { totalTasksCompleted, categoryCounts, totalPointsFromTasks, tasksCompletedLast7Days: recentTasks.length } });
+    res.status(200).json({
+      statistics: {
+        totalTasksCompleted,
+        categoryCounts,
+        totalPointsFromTasks,
+        tasksCompletedLast7Days: recentTasks.length,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
@@ -278,7 +314,10 @@ const uncompleteTask = async (req, res) => {
     const userId = req.user.userId;
     const { completionId } = req.params;
 
-    const { data: completion } = await queryOne('SELECT udt.*, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.id = ? AND udt.user_id = ?', [completionId, userId]);
+    const { data: completion } = await queryOne(
+      'SELECT udt.*, dt.points_reward FROM user_daily_tasks udt JOIN daily_tasks dt ON udt.task_id = dt.id WHERE udt.id = ? AND udt.user_id = ?',
+      [completionId, userId],
+    );
 
     if (!completion) {
       return res.status(404).json({ error: 'Completed task not found' });
@@ -291,12 +330,25 @@ const uncompleteTask = async (req, res) => {
     const pointsToDeduct = completion.points_reward || 0;
     const newTotalPoints = Math.max(0, profile.total_points - pointsToDeduct);
 
-    await query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [newTotalPoints, new Date().toISOString(), userId]);
+    await query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [
+      newTotalPoints,
+      new Date().toISOString(),
+      userId,
+    ]);
 
-    res.status(200).json({ message: 'Task uncompleted successfully', pointsDeducted: pointsToDeduct, totalPoints: newTotalPoints });
+    res
+      .status(200)
+      .json({ message: 'Task uncompleted successfully', pointsDeducted: pointsToDeduct, totalPoints: newTotalPoints });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 };
 
-module.exports = { getDailyTasks, completeTask, getUserCompletedTasks, getTodayProgress, getTaskStatistics, uncompleteTask };
+module.exports = {
+  getDailyTasks,
+  completeTask,
+  getUserCompletedTasks,
+  getTodayProgress,
+  getTaskStatistics,
+  uncompleteTask,
+};

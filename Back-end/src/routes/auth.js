@@ -12,9 +12,9 @@ router.post(
     body('username').trim().isLength({ min: 3 }).withMessage('Username must be at least 3 characters'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('email').optional().isEmail().withMessage('Invalid email format'),
-    validate
+    validate,
   ],
-  register
+  register,
 );
 
 router.post(
@@ -22,9 +22,9 @@ router.post(
   [
     body('username').trim().notEmpty().withMessage('Username is required'),
     body('password').notEmpty().withMessage('Password is required'),
-    validate
+    validate,
   ],
-  login
+  login,
 );
 
 router.get('/profile', authenticateToken, getProfile);
@@ -36,9 +36,9 @@ router.post(
     body('email').trim().isEmail().withMessage('Invalid email format'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('username').trim().isLength({ min: 3 }).withMessage('Username must be at least 3 characters'),
-    validate
+    validate,
   ],
-  convertAnonymousToRegistered
+  convertAnonymousToRegistered,
 );
 
 module.exports = router;

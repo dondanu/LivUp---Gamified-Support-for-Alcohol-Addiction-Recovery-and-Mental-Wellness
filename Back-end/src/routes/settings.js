@@ -14,9 +14,9 @@ router.put(
     body('notificationsEnabled').optional().isBoolean().withMessage('Invalid notifications setting'),
     body('reminderFrequency').optional().isIn(['daily', 'weekly', 'none']).withMessage('Invalid reminder frequency'),
     body('theme').optional().isIn(['light', 'dark']).withMessage('Invalid theme'),
-    validate
+    validate,
   ],
-  updateUserSettings
+  updateUserSettings,
 );
 
 module.exports = router;

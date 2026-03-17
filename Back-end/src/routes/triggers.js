@@ -7,19 +7,21 @@ const {
   logTrigger,
   getTriggerLogs,
   getTriggerAnalysis,
-  deleteTriggerLog
+  deleteTriggerLog,
 } = require('../controllers/triggerController');
 
 router.post(
   '/log',
   authenticateToken,
   [
-    body('triggerType').isIn(['stress', 'party', 'social', 'boredom', 'anxiety', 'other']).withMessage('Invalid trigger type'),
+    body('triggerType')
+      .isIn(['stress', 'party', 'social', 'boredom', 'anxiety', 'other'])
+      .withMessage('Invalid trigger type'),
     body('intensity').isInt({ min: 1, max: 10 }).withMessage('Intensity must be between 1 and 10'),
     body('logDate').optional().isISO8601().withMessage('Invalid date format'),
-    validate
+    validate,
   ],
-  logTrigger
+  logTrigger,
 );
 
 router.get('/logs', authenticateToken, getTriggerLogs);

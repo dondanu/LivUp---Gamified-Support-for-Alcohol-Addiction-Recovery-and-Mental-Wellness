@@ -12,16 +12,26 @@ const getUserProfile = async (req, res) => {
     }
 
     const { data: level } = await queryOne('SELECT * FROM levels WHERE id = ?', [profile.level_id]);
-    const { data: nextLevel } = await queryOne('SELECT * FROM levels WHERE id > ? ORDER BY id ASC LIMIT 1', [profile.level_id]);
+    const { data: nextLevel } = await queryOne('SELECT * FROM levels WHERE id > ? ORDER BY id ASC LIMIT 1', [
+      profile.level_id,
+    ]);
 
-    const { data: userAchievements } = await query('SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ?', [userId]);
+    const { data: userAchievements } = await query(
+      'SELECT ua.*, a.* FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = ?',
+      [userId],
+    );
 
     res.status(200).json({
       profile,
       currentLevel: level,
       nextLevel: nextLevel || null,
       achievements: userAchievements || [],
-      progressToNextLevel: nextLevel ? ((profile.total_points - level.points_required) / (nextLevel.points_required - level.points_required) * 100).toFixed(2) : 100
+      progressToNextLevel: nextLevel
+        ? (
+          ((profile.total_points - level.points_required) / (nextLevel.points_required - level.points_required)) *
+            100
+        ).toFixed(2)
+        : 100,
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
@@ -37,15 +47,15 @@ const updateUserPoints = async (req, res) => {
     if (!points || typeof points !== 'number') {
       return res.status(400).json({ error: 'Valid points amount required (must be a number)' });
     }
-    
+
     if (points <= 0) {
       return res.status(400).json({ error: 'Points must be greater than 0' });
     }
-    
+
     if (points > 10000) {
       return res.status(400).json({ error: 'Points cannot exceed 10000 per update' });
     }
-    
+
     if (reason !== undefined && typeof reason !== 'string') {
       return res.status(400).json({ error: 'Reason must be a string' });
     }
@@ -58,7 +68,10 @@ const updateUserPoints = async (req, res) => {
 
     const newLevel = determineLevel(newTotalPoints, levels || []);
 
-    await query('UPDATE user_profiles SET total_points = ?, level_id = ?, avatar_type = ?, updated_at = ? WHERE user_id = ?', [newTotalPoints, newLevel.id, newLevel.avatar_unlock, new Date().toISOString(), userId]);
+    await query(
+      'UPDATE user_profiles SET total_points = ?, level_id = ?, avatar_type = ?, updated_at = ? WHERE user_id = ?',
+      [newTotalPoints, newLevel.id, newLevel.avatar_unlock, new Date().toISOString(), userId],
+    );
 
     const { data: updatedProfile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
 
@@ -68,7 +81,7 @@ const updateUserPoints = async (req, res) => {
     let conversionPrompt = null;
     if (newTotalPoints >= 150) {
       const milestone = await detectMilestone(userId, 'points_earned', {
-        totalPoints: newTotalPoints
+        totalPoints: newTotalPoints,
       });
 
       if (milestone.shouldShowPrompt) {
@@ -78,14 +91,14 @@ const updateUserPoints = async (req, res) => {
       }
     }
 
-    res.status(200).json({ 
-      message: 'Points updated successfully', 
-      profile: updatedProfile, 
-      pointsAdded: points, 
-      reason: reason || 'Manual update', 
-      leveledUp, 
+    res.status(200).json({
+      message: 'Points updated successfully',
+      profile: updatedProfile,
+      pointsAdded: points,
+      reason: reason || 'Manual update',
+      leveledUp,
       newLevel: leveledUp ? newLevel : null,
-      conversionPrompt
+      conversionPrompt,
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
@@ -107,13 +120,22 @@ const getAchievements = async (req, res) => {
     const userId = req.user.userId;
 
     const { data: allAchievements } = await query('SELECT * FROM achievements ORDER BY points_reward ASC', []);
-    const { data: userAchievements } = await query('SELECT achievement_id FROM user_achievements WHERE user_id = ?', [userId]);
+    const { data: userAchievements } = await query('SELECT achievement_id FROM user_achievements WHERE user_id = ?', [
+      userId,
+    ]);
 
-    const earnedIds = new Set((userAchievements || []).map(ua => ua.achievement_id));
+    const earnedIds = new Set((userAchievements || []).map((ua) => ua.achievement_id));
 
-    const categorizedAchievements = (allAchievements || []).map(achievement => ({ ...achievement, earned: earnedIds.has(achievement.id) }));
+    const categorizedAchievements = (allAchievements || []).map((achievement) => ({
+      ...achievement,
+      earned: earnedIds.has(achievement.id),
+    }));
 
-    res.status(200).json({ achievements: categorizedAchievements, totalAchievements: (allAchievements || []).length, earnedCount: earnedIds.size });
+    res.status(200).json({
+      achievements: categorizedAchievements,
+      totalAchievements: (allAchievements || []).length,
+      earnedCount: earnedIds.size,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
@@ -124,21 +146,28 @@ const checkAndAwardAchievements = async (req, res) => {
     const userId = req.user.userId;
 
     const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
-    const { data: userAchievements } = await query('SELECT achievement_id FROM user_achievements WHERE user_id = ?', [userId]);
-    const earnedIds = new Set((userAchievements || []).map(ua => ua.achievement_id));
+    const { data: userAchievements } = await query('SELECT achievement_id FROM user_achievements WHERE user_id = ?', [
+      userId,
+    ]);
+    const earnedIds = new Set((userAchievements || []).map((ua) => ua.achievement_id));
     const { data: allAchievements } = await query('SELECT * FROM achievements', []);
     const { data: completedTasks } = await query('SELECT id FROM user_daily_tasks WHERE user_id = ?', [userId]);
     const { data: drinkLogs } = await query('SELECT drink_count FROM drink_logs WHERE user_id = ?', [userId]);
 
-    const drinksAvoided = (drinkLogs || []).filter(log => log.drink_count === 0).length;
+    const drinksAvoided = (drinkLogs || []).filter((log) => log.drink_count === 0).length;
 
-    const userStats = { days_sober: profile.days_sober, current_streak: profile.current_streak, tasks_completed: (completedTasks || []).length, drinks_avoided: drinksAvoided };
+    const userStats = {
+      days_sober: profile.days_sober,
+      current_streak: profile.current_streak,
+      tasks_completed: (completedTasks || []).length,
+      drinks_avoided: drinksAvoided,
+    };
 
     const newAchievements = [];
     let totalPointsAwarded = 0;
 
     // Check which achievements are eligible
-    for (const achievement of (allAchievements || [])) {
+    for (const achievement of allAchievements || []) {
       if (!earnedIds.has(achievement.id) && checkAchievementEligibility(userStats, achievement)) {
         newAchievements.push(achievement);
         totalPointsAwarded += achievement.points_reward;
@@ -150,14 +179,20 @@ const checkAndAwardAchievements = async (req, res) => {
       const { error: txError } = await transaction(async (tx) => {
         // Insert all new achievements
         for (const achievement of newAchievements) {
-          const { error } = await tx.query('INSERT INTO user_achievements (user_id, achievement_id) VALUES (?, ?)', [userId, achievement.id]);
+          const { error } = await tx.query('INSERT INTO user_achievements (user_id, achievement_id) VALUES (?, ?)', [
+            userId,
+            achievement.id,
+          ]);
           if (error) {
             throw new Error('Failed to award achievement: ' + error.message);
           }
         }
 
         // Update user points
-        const { error: pointsError } = await tx.query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [profile.total_points + totalPointsAwarded, new Date().toISOString(), userId]);
+        const { error: pointsError } = await tx.query(
+          'UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?',
+          [profile.total_points + totalPointsAwarded, new Date().toISOString(), userId],
+        );
         if (pointsError) {
           throw new Error('Failed to update points: ' + pointsError.message);
         }
@@ -176,7 +211,7 @@ const checkAndAwardAchievements = async (req, res) => {
       const milestone = await detectMilestone(userId, 'achievement_unlocked', {
         isFirstAchievement: true,
         achievementName: newAchievements[0].name,
-        pointsEarned: newAchievements[0].points_reward
+        pointsEarned: newAchievements[0].points_reward,
       });
 
       if (milestone.shouldShowPrompt) {
@@ -186,11 +221,11 @@ const checkAndAwardAchievements = async (req, res) => {
       }
     }
 
-    res.status(200).json({ 
-      message: newAchievements.length > 0 ? 'New achievements unlocked!' : 'No new achievements', 
-      newAchievements, 
+    res.status(200).json({
+      message: newAchievements.length > 0 ? 'New achievements unlocked!' : 'No new achievements',
+      newAchievements,
       pointsAwarded: totalPointsAwarded,
-      conversionPrompt
+      conversionPrompt,
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
@@ -206,12 +241,16 @@ const updateAvatar = async (req, res) => {
     if (!avatarType || typeof avatarType !== 'string') {
       return res.status(400).json({ error: 'Avatar type is required and must be a string' });
     }
-    
+
     if (avatarType.length > 50) {
       return res.status(400).json({ error: 'Avatar type must be 50 characters or less' });
     }
 
-    await query('UPDATE user_profiles SET avatar_type = ?, updated_at = ? WHERE user_id = ?', [avatarType, new Date().toISOString(), userId]);
+    await query('UPDATE user_profiles SET avatar_type = ?, updated_at = ? WHERE user_id = ?', [
+      avatarType,
+      new Date().toISOString(),
+      userId,
+    ]);
     const { data: updatedProfile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
 
     res.status(200).json({ message: 'Avatar updated successfully', profile: updatedProfile });
@@ -220,4 +259,11 @@ const updateAvatar = async (req, res) => {
   }
 };
 
-module.exports = { getUserProfile, updateUserPoints, getLevels, getAchievements, checkAndAwardAchievements, updateAvatar };
+module.exports = {
+  getUserProfile,
+  updateUserPoints,
+  getLevels,
+  getAchievements,
+  checkAndAwardAchievements,
+  updateAvatar,
+};

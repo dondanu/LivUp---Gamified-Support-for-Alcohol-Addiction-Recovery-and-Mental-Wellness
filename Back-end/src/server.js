@@ -199,9 +199,9 @@ app.get('/api', (req, res) => {
       sos: '/api/sos',
       settings: '/api/settings',
       progress: '/api/progress',
-      insights: '/api/insights'
+      insights: '/api/insights',
     },
-    generatedAt: new Date().toISOString()
+    generatedAt: new Date().toISOString(),
   });
 });
 
@@ -213,25 +213,31 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('Error:', err);
   res.status(500).json({
     error: 'Internal server error',
-    details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    details: process.env.NODE_ENV === 'development' ? err.message : undefined,
   });
 });
 
 // Async startup function
 async function startServer() {
   try {
+    // Skip database initialization in test environment
+    if (process.env.NODE_ENV === 'test') {
+      console.log('ℹ️  Skipping database initialization in test environment');
+      return app; // Return app for testing without starting server
+    }
+
     // Initialize database first
     const dbReady = await initializeDatabaseWithGate();
-    
+
     if (!dbReady) {
       console.warn('⚠️  Server starting with database initialization failure');
       console.warn('⚠️  API requests will return 503 until database is ready');
     }
-    
+
     // Start listening only after database is ready
     app.listen(PORT, () => {
       const serverUrl = `http://localhost:${PORT}`;
@@ -255,7 +261,9 @@ async function startServer() {
   }
 }
 
-// Start the server
-startServer();
+// Start the server only if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
 module.exports = app;

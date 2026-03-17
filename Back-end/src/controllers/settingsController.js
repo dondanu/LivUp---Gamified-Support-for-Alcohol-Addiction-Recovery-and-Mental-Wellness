@@ -7,7 +7,10 @@ const getUserSettings = async (req, res) => {
     const { data } = await queryOne('SELECT * FROM user_settings WHERE user_id = ?', [userId]);
 
     if (!data) {
-      const { data: insertResult } = await query('INSERT INTO user_settings (user_id, notifications_enabled, reminder_frequency, theme) VALUES (?, ?, ?, ?)', [userId, true, 'daily', 'light']);
+      const { data: insertResult } = await query(
+        'INSERT INTO user_settings (user_id, notifications_enabled, reminder_frequency, theme) VALUES (?, ?, ?, ?)',
+        [userId, true, 'daily', 'light'],
+      );
       const { data: newSettings } = await queryOne('SELECT * FROM user_settings WHERE id = ?', [insertResult.insertId]);
       return res.status(200).json({ settings: newSettings });
     }
@@ -27,7 +30,7 @@ const updateUserSettings = async (req, res) => {
     if (notificationsEnabled !== undefined && typeof notificationsEnabled !== 'boolean') {
       return res.status(400).json({ error: 'notificationsEnabled must be a boolean' });
     }
-    
+
     if (dailyReminderTime !== undefined) {
       // Validate time format (HH:MM)
       const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -35,14 +38,14 @@ const updateUserSettings = async (req, res) => {
         return res.status(400).json({ error: 'dailyReminderTime must be in HH:MM format' });
       }
     }
-    
+
     if (reminderFrequency !== undefined) {
       const validFrequencies = ['daily', 'weekly', 'never'];
       if (!validFrequencies.includes(reminderFrequency)) {
         return res.status(400).json({ error: 'reminderFrequency must be one of: daily, weekly, never' });
       }
     }
-    
+
     if (theme !== undefined) {
       const validThemes = ['light', 'dark', 'auto'];
       if (!validThemes.includes(theme)) {

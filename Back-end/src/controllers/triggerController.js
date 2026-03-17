@@ -20,12 +20,15 @@ const logTrigger = async (req, res) => {
 
     const date = logDate || new Date().toISOString().split('T')[0];
 
-    const { data: insertResult, error: insertError } = await query('INSERT INTO trigger_logs (user_id, trigger_type, intensity, log_date, notes) VALUES (?, ?, ?, ?, ?)', [userId, triggerType, intensity, date, notes || null]);
-    
+    const { data: insertResult, error: insertError } = await query(
+      'INSERT INTO trigger_logs (user_id, trigger_type, intensity, log_date, notes) VALUES (?, ?, ?, ?, ?)',
+      [userId, triggerType, intensity, date, notes || null],
+    );
+
     if (insertError || !insertResult) {
       return res.status(500).json({ error: 'Failed to log trigger', details: insertError?.message });
     }
-    
+
     const { data: triggerLog } = await queryOne('SELECT * FROM trigger_logs WHERE id = ?', [insertResult.insertId]);
 
     res.status(201).json({ message: 'Trigger logged successfully', triggerLog });
@@ -52,7 +55,7 @@ const getTriggerLogs = async (req, res) => {
     }
 
     sql += ' ORDER BY log_date DESC';
-    
+
     // IMPORTANT: MySQL doesn't accept LIMIT as a parameter in prepared statements
     const sanitizedLimit = Math.max(1, Math.min(parseInt(limit) || 50, 1000));
     sql += ` LIMIT ${sanitizedLimit}`;
@@ -73,7 +76,9 @@ const getTriggerAnalysis = async (req, res) => {
 
     const logsArray = logs || [];
     if (logsArray.length === 0) {
-      return res.status(200).json({ analysis: { mostCommonTrigger: null, averageIntensity: 0, triggerDistribution: {}, totalTriggers: 0 } });
+      return res.status(200).json({
+        analysis: { mostCommonTrigger: null, averageIntensity: 0, triggerDistribution: {}, totalTriggers: 0 },
+      });
     }
 
     const averageIntensity = logsArray.reduce((sum, log) => sum + log.intensity, 0) / logsArray.length;
@@ -83,7 +88,9 @@ const getTriggerAnalysis = async (req, res) => {
       return acc;
     }, {});
 
-    const mostCommonTrigger = Object.keys(triggerCounts).reduce((a, b) => triggerCounts[a] > triggerCounts[b] ? a : b);
+    const mostCommonTrigger = Object.keys(triggerCounts).reduce((a, b) =>
+      triggerCounts[a] > triggerCounts[b] ? a : b,
+    );
 
     const triggerIntensities = logsArray.reduce((acc, log) => {
       if (!acc[log.trigger_type]) {
@@ -95,11 +102,21 @@ const getTriggerAnalysis = async (req, res) => {
     }, {});
 
     const triggerAverages = {};
-    Object.keys(triggerIntensities).forEach(trigger => {
-      triggerAverages[trigger] = parseFloat((triggerIntensities[trigger].total / triggerIntensities[trigger].count).toFixed(2));
+    Object.keys(triggerIntensities).forEach((trigger) => {
+      triggerAverages[trigger] = parseFloat(
+        (triggerIntensities[trigger].total / triggerIntensities[trigger].count).toFixed(2),
+      );
     });
 
-    res.status(200).json({ analysis: { mostCommonTrigger, averageIntensity: parseFloat(averageIntensity.toFixed(2)), triggerDistribution: triggerCounts, triggerAverageIntensities: triggerAverages, totalTriggers: logsArray.length } });
+    res.status(200).json({
+      analysis: {
+        mostCommonTrigger,
+        averageIntensity: parseFloat(averageIntensity.toFixed(2)),
+        triggerDistribution: triggerCounts,
+        triggerAverageIntensities: triggerAverages,
+        totalTriggers: logsArray.length,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }

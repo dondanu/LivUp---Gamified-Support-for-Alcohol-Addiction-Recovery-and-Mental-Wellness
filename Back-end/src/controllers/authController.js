@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { query, queryOne, transaction } = require('../config/database');
+const { queryOne, transaction } = require('../config/database');
 
 const register = async (req, res) => {
   try {
@@ -35,7 +35,7 @@ const register = async (req, res) => {
       // Insert user
       const { data: insertResult, error: userError } = await tx.query(
         'INSERT INTO users (email, password_hash, username, is_anonymous) VALUES (?, ?, ?, ?)',
-        [email || null, hashedPassword, username, isAnonymous]
+        [email || null, hashedPassword, username, isAnonymous],
       );
 
       if (userError) {
@@ -47,7 +47,7 @@ const register = async (req, res) => {
       // Create user profile
       const { error: profileError } = await tx.query(
         'INSERT INTO user_profiles (user_id, total_points, current_streak, longest_streak, level_id, avatar_type, days_sober) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [newUserId, 0, 0, 0, 1, 'basic', 0]
+        [newUserId, 0, 0, 0, 1, 'basic', 0],
       );
 
       if (profileError) {
@@ -57,7 +57,7 @@ const register = async (req, res) => {
       // Create user settings
       const { error: settingsError } = await tx.query(
         'INSERT INTO user_settings (user_id, notifications_enabled, reminder_frequency, theme) VALUES (?, ?, ?, ?)',
-        [newUserId, true, 'daily', 'light']
+        [newUserId, true, 'daily', 'light'],
       );
 
       if (settingsError) {
@@ -74,12 +74,14 @@ const register = async (req, res) => {
     // Get the new user
     const { data: newUser } = await queryOne('SELECT * FROM users WHERE id = ?', [userId]);
 
-    const token = jwt.sign({ userId: newUser.id, username: newUser.username }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ userId: newUser.id, username: newUser.username }, process.env.JWT_SECRET, {
+      expiresIn: '30d',
+    });
 
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: { id: newUser.id, username: newUser.username, email: newUser.email, isAnonymous: newUser.is_anonymous }
+      user: { id: newUser.id, username: newUser.username, email: newUser.email, isAnonymous: newUser.is_anonymous },
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
@@ -96,13 +98,17 @@ const login = async (req, res) => {
 
     // Try to find user by username first, then by email
     let user, error;
-    const { data: userByUsername, error: errorUsername } = await queryOne('SELECT * FROM users WHERE username = ?', [username]);
-    
+    const { data: userByUsername, error: errorUsername } = await queryOne('SELECT * FROM users WHERE username = ?', [
+      username,
+    ]);
+
     if (userByUsername) {
       user = userByUsername;
     } else {
       // If not found by username, try email
-      const { data: userByEmail, error: errorEmail } = await queryOne('SELECT * FROM users WHERE email = ?', [username]);
+      const { data: userByEmail, error: errorEmail } = await queryOne('SELECT * FROM users WHERE email = ?', [
+        username,
+      ]);
       if (userByEmail) {
         user = userByEmail;
       } else {
@@ -125,7 +131,7 @@ const login = async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       token,
-      user: { id: user.id, username: user.username, email: user.email, isAnonymous: user.is_anonymous }
+      user: { id: user.id, username: user.username, email: user.email, isAnonymous: user.is_anonymous },
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
@@ -136,7 +142,10 @@ const getProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const { data: user } = await queryOne('SELECT id, username, email, is_anonymous, created_at FROM users WHERE id = ?', [userId]);
+    const { data: user } = await queryOne(
+      'SELECT id, username, email, is_anonymous, created_at FROM users WHERE id = ?',
+      [userId],
+    );
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }

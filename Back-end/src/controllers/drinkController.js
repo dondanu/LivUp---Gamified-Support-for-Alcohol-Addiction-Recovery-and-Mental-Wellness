@@ -12,25 +12,37 @@ const logDrink = async (req, res) => {
 
     const date = logDate || new Date().toISOString().split('T')[0];
 
-    const { data: existingLog } = await queryOne('SELECT * FROM drink_logs WHERE user_id = ? AND log_date = ?', [userId, date]);
+    const { data: existingLog } = await queryOne('SELECT * FROM drink_logs WHERE user_id = ? AND log_date = ?', [
+      userId,
+      date,
+    ]);
 
     let drinkLog;
     if (existingLog) {
-      await query('UPDATE drink_logs SET drink_count = ?, notes = ? WHERE id = ?', [drinkCount, notes || existingLog.notes, existingLog.id]);
+      await query('UPDATE drink_logs SET drink_count = ?, notes = ? WHERE id = ?', [
+        drinkCount,
+        notes || existingLog.notes,
+        existingLog.id,
+      ]);
       const { data: updatedLog } = await queryOne('SELECT * FROM drink_logs WHERE id = ?', [existingLog.id]);
       drinkLog = updatedLog;
     } else {
-      const { data: insertResult, error: insertError } = await query('INSERT INTO drink_logs (user_id, drink_count, log_date, notes) VALUES (?, ?, ?, ?)', [userId, drinkCount, date, notes || null]);
-      
+      const { data: insertResult, error: insertError } = await query(
+        'INSERT INTO drink_logs (user_id, drink_count, log_date, notes) VALUES (?, ?, ?, ?)',
+        [userId, drinkCount, date, notes || null],
+      );
+
       if (insertError || !insertResult) {
         return res.status(500).json({ error: 'Failed to log drink', details: insertError?.message });
       }
-      
+
       const { data: newLog } = await queryOne('SELECT * FROM drink_logs WHERE id = ?', [insertResult.insertId]);
       drinkLog = newLog;
     }
 
-    const { data: allLogs } = await query('SELECT * FROM drink_logs WHERE user_id = ? ORDER BY log_date DESC', [userId]);
+    const { data: allLogs } = await query('SELECT * FROM drink_logs WHERE user_id = ? ORDER BY log_date DESC', [
+      userId,
+    ]);
 
     const currentStreak = calculateStreak(allLogs || []);
     const totalSoberDays = calculateTotalSoberDays(allLogs || []);
@@ -41,9 +53,16 @@ const logDrink = async (req, res) => {
     const pointsEarned = drinkCount === 0 ? 10 : 0;
     const newTotalPoints = (profile?.total_points || 0) + pointsEarned;
 
-    await query('UPDATE user_profiles SET current_streak = ?, longest_streak = ?, days_sober = ?, total_points = ?, updated_at = ? WHERE user_id = ?', [currentStreak, longestStreak, totalSoberDays, newTotalPoints, new Date().toISOString(), userId]);
+    await query(
+      'UPDATE user_profiles SET current_streak = ?, longest_streak = ?, days_sober = ?, total_points = ?, updated_at = ? WHERE user_id = ?',
+      [currentStreak, longestStreak, totalSoberDays, newTotalPoints, new Date().toISOString(), userId],
+    );
 
-    res.status(200).json({ message: 'Drink log recorded successfully', drinkLog, stats: { currentStreak, totalSoberDays, pointsEarned, totalPoints: newTotalPoints } });
+    res.status(200).json({
+      message: 'Drink log recorded successfully',
+      drinkLog,
+      stats: { currentStreak, totalSoberDays, pointsEarned, totalPoints: newTotalPoints },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
@@ -69,7 +88,7 @@ const getDrinkLogs = async (req, res) => {
     }
 
     sql += ' ORDER BY log_date DESC';
-    
+
     // IMPORTANT: MySQL doesn't accept LIMIT as a parameter in prepared statements
     // We need to add it directly to the SQL string (after sanitizing the value)
     const sanitizedLimit = Math.max(1, Math.min(parseInt(limit) || 30, 1000)); // Between 1 and 1000
@@ -118,7 +137,7 @@ const getDrinkStatistics = async (req, res) => {
     const totalSoberDays = calculateTotalSoberDays(logsArray);
     const currentStreak = calculateStreak(logsArray);
 
-    const lastWeekLogs = logsArray.filter(log => {
+    const lastWeekLogs = logsArray.filter((log) => {
       const logDate = new Date(log.log_date);
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
@@ -127,7 +146,9 @@ const getDrinkStatistics = async (req, res) => {
 
     const weeklyDrinks = lastWeekLogs.reduce((sum, log) => sum + log.drink_count, 0);
 
-    res.status(200).json({ statistics: { totalDrinks, totalSoberDays, currentStreak, weeklyDrinks, totalLogs: logsArray.length } });
+    res
+      .status(200)
+      .json({ statistics: { totalDrinks, totalSoberDays, currentStreak, weeklyDrinks, totalLogs: logsArray.length } });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }

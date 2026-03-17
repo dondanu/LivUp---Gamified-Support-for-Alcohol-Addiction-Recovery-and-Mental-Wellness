@@ -14,7 +14,7 @@ const dbConfig = {
   connectionLimit: 10,
   queueLimit: 0,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 0
+  keepAliveInitialDelay: 0,
 };
 
 // Create connection pool
@@ -39,7 +39,7 @@ async function initializeDatabaseWithGate() {
     console.log('🔄 Starting database initialization...');
     await initializeDatabase();
     console.log('✅ Database initialization complete');
-    
+
     // Import here to avoid circular dependency
     const { setDatabaseReady } = require('../middleware/startupGate');
     setDatabaseReady(true);
@@ -49,9 +49,9 @@ async function initializeDatabaseWithGate() {
       message: error.message,
       stack: error.stack,
       code: error.code,
-      errno: error.errno
+      errno: error.errno,
     });
-    
+
     // Import here to avoid circular dependency
     const { setDatabaseReady } = require('../middleware/startupGate');
     setDatabaseReady(false, error);
@@ -59,24 +59,30 @@ async function initializeDatabaseWithGate() {
   }
 }
 
-// Test connection and initialize database
-pool.getConnection()
-  .then(async (connection) => {
-    console.log('✅ MySQL database connected successfully');
-    connection.release();
-    // Initialize database (create tables if needed)
-    await ensureDatabaseInitialized();
-  })
-  .catch(async (err) => {
-    console.error('❌ MySQL connection error:', err.message);
-    console.warn('⚠️  Make sure MySQL is running and credentials in .env are correct');
-    // Try to initialize database anyway (might just need to create it)
-    try {
+// Only initialize database connection if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  // Test connection and initialize database
+  pool
+    .getConnection()
+    .then(async (connection) => {
+      console.log('✅ MySQL database connected successfully');
+      connection.release();
+      // Initialize database (create tables if needed)
       await ensureDatabaseInitialized();
-    } catch (initError) {
-      console.warn('⚠️  Could not initialize database:', initError.message);
-    }
-  });
+    })
+    .catch(async (err) => {
+      console.error('❌ MySQL connection error:', err.message);
+      console.warn('⚠️  Make sure MySQL is running and credentials in .env are correct');
+      // Try to initialize database anyway (might just need to create it)
+      try {
+        await ensureDatabaseInitialized();
+      } catch (initError) {
+        console.warn('⚠️  Could not initialize database:', initError.message);
+      }
+    });
+} else {
+  console.log('ℹ️  Skipping database connection in test environment');
+}
 
 // Helper function to execute queries
 const query = async (sql, params = []) => {
@@ -91,7 +97,9 @@ const query = async (sql, params = []) => {
 // Helper function for single row queries
 const queryOne = async (sql, params = []) => {
   const { data, error } = await query(sql, params);
-  if (error) return { data: null, error };
+  if (error) {
+    return { data: null, error };
+  }
   return { data: data && data.length > 0 ? data[0] : null, error: null };
 };
 
@@ -100,7 +108,7 @@ const transaction = async (callback) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    
+
     // Provide transaction-aware query functions
     const txQuery = async (sql, params = []) => {
       try {
@@ -110,16 +118,18 @@ const transaction = async (callback) => {
         return { data: null, error };
       }
     };
-    
+
     const txQueryOne = async (sql, params = []) => {
       const { data, error } = await txQuery(sql, params);
-      if (error) return { data: null, error };
+      if (error) {
+        return { data: null, error };
+      }
       return { data: data && data.length > 0 ? data[0] : null, error: null };
     };
-    
+
     // Execute the callback with transaction-aware functions
     const result = await callback({ query: txQuery, queryOne: txQueryOne });
-    
+
     await connection.commit();
     return { data: result, error: null };
   } catch (error) {
@@ -135,5 +145,5 @@ module.exports = {
   query,
   queryOne,
   transaction,
-  initializeDatabaseWithGate
+  initializeDatabaseWithGate,
 };

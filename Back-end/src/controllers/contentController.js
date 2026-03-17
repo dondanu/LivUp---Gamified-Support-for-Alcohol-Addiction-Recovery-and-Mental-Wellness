@@ -41,12 +41,12 @@ const getHealthyAlternatives = async (req, res) => {
 
     console.log(`[Content] Fetching alternatives: ${sql}`);
     const { data, error } = await query(sql, params);
-    
+
     if (error) {
       console.error('[Content] Error fetching alternatives:', error);
       return res.status(500).json({ error: 'Server error', details: error.message });
     }
-    
+
     console.log(`[Content] Found ${(data || []).length} alternatives`);
     res.status(200).json({ alternatives: data || [], count: (data || []).length });
   } catch (error) {

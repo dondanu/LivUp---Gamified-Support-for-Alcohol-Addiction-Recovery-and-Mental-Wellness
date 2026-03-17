@@ -6,43 +6,44 @@ const dbConfig = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'mind_fusion',
-  multipleStatements: true
+  multipleStatements: true,
 };
 
 async function initializeDatabase() {
   let connection;
-  
+
   try {
     // Connect without database first to create it
     const configWithoutDb = { ...dbConfig };
     delete configWithoutDb.database;
-    
+
     connection = await mysql.createConnection(configWithoutDb);
-    
+
     // Create database if it doesn't exist
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
     console.log(`✅ Database '${dbConfig.database}' ready`);
-    
+
     await connection.end();
-    
+
     // Now connect to the database
     connection = await mysql.createConnection(dbConfig);
-    
+
     // Create all tables
     await createTables(connection);
-    
+
     // Run migrations for existing tables
     await migrateTables(connection);
-    
+
     // Insert initial data
     await insertInitialData(connection);
-    
+
     console.log('✅ Database initialization complete!');
     await connection.end();
-    
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);
-    if (connection) await connection.end();
+    if (connection) {
+      await connection.end();
+    }
     throw error;
   }
 }
@@ -57,14 +58,14 @@ async function migrateTables(connection) {
       AND TABLE_NAME = 'daily_tasks' 
       AND COLUMN_NAME = 'difficulty'
     `);
-    
+
     if (columns.length === 0) {
       await connection.query(`
         ALTER TABLE daily_tasks 
         ADD COLUMN difficulty VARCHAR(20) DEFAULT 'Easy' AFTER category
       `);
       console.log('✅ Added difficulty column to daily_tasks');
-      
+
       // Update existing tasks with default difficulty based on points
       await connection.query(`
         UPDATE daily_tasks 
@@ -386,7 +387,7 @@ async function insertInitialData(connection) {
   const [quoteRows] = await connection.query('SELECT COUNT(*) as count FROM motivational_quotes');
   if (quoteRows[0].count === 0) {
     // Insert motivational quotes
-  await connection.query(`
+    await connection.query(`
     INSERT INTO motivational_quotes (quote, author, category, is_active) VALUES
     ('Every day is a new beginning.', 'Anonymous', 'motivation', TRUE),
     ('You are stronger than you think.', 'Anonymous', 'strength', TRUE),
@@ -467,11 +468,10 @@ if (require.main === module) {
       console.log('✅ Database setup complete');
       process.exit(0);
     })
-    .catch(error => {
+    .catch((error) => {
       console.error('❌ Database setup failed:', error);
       process.exit(1);
     });
 }
 
 module.exports = { initializeDatabase };
-

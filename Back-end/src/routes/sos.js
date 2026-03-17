@@ -3,12 +3,7 @@ const router = express.Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validation');
 const { authenticateToken } = require('../middleware/auth');
-const {
-  addSOSContact,
-  getSOSContacts,
-  updateSOSContact,
-  deleteSOSContact
-} = require('../controllers/sosController');
+const { addSOSContact, getSOSContacts, updateSOSContact, deleteSOSContact } = require('../controllers/sosController');
 
 router.post(
   '/contact',
@@ -16,9 +11,9 @@ router.post(
   [
     body('contactName').trim().notEmpty().withMessage('Contact name is required'),
     body('contactPhone').trim().notEmpty().withMessage('Contact phone is required'),
-    validate
+    validate,
   ],
-  addSOSContact
+  addSOSContact,
 );
 
 router.get('/contacts', authenticateToken, getSOSContacts);
@@ -26,12 +21,8 @@ router.get('/contacts', authenticateToken, getSOSContacts);
 router.put(
   '/contact/:contactId',
   authenticateToken,
-  [
-    body('contactName').optional().trim().notEmpty(),
-    body('contactPhone').optional().trim().notEmpty(),
-    validate
-  ],
-  updateSOSContact
+  [body('contactName').optional().trim().notEmpty(), body('contactPhone').optional().trim().notEmpty(), validate],
+  updateSOSContact,
 );
 
 router.delete('/contact/:contactId', authenticateToken, deleteSOSContact);

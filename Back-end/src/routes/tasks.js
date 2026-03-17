@@ -9,7 +9,7 @@ const {
   getUserCompletedTasks,
   getTodayProgress,
   getTaskStatistics,
-  uncompleteTask
+  uncompleteTask,
 } = require('../controllers/tasksController');
 
 router.get('/daily', getDailyTasks);
@@ -20,9 +20,9 @@ router.post(
   [
     body('taskId').isInt().withMessage('Valid task ID is required'),
     body('completionDate').optional().isISO8601().withMessage('Invalid date format'),
-    validate
+    validate,
   ],
-  completeTask
+  completeTask,
 );
 
 router.get('/completed', authenticateToken, getUserCompletedTasks);

@@ -20,20 +20,31 @@ const logMood = async (req, res) => {
 
     const date = logDate || new Date().toISOString().split('T')[0];
 
-    const { data: existingLog } = await queryOne('SELECT * FROM mood_logs WHERE user_id = ? AND log_date = ?', [userId, date]);
+    const { data: existingLog } = await queryOne('SELECT * FROM mood_logs WHERE user_id = ? AND log_date = ?', [
+      userId,
+      date,
+    ]);
 
     let moodLog;
     if (existingLog) {
-      await query('UPDATE mood_logs SET mood_type = ?, mood_score = ?, notes = ? WHERE id = ?', [moodType, moodScore, notes || existingLog.notes, existingLog.id]);
+      await query('UPDATE mood_logs SET mood_type = ?, mood_score = ?, notes = ? WHERE id = ?', [
+        moodType,
+        moodScore,
+        notes || existingLog.notes,
+        existingLog.id,
+      ]);
       const { data: updatedLog } = await queryOne('SELECT * FROM mood_logs WHERE id = ?', [existingLog.id]);
       moodLog = updatedLog;
     } else {
-      const { data: insertResult, error: insertError } = await query('INSERT INTO mood_logs (user_id, mood_type, mood_score, log_date, notes) VALUES (?, ?, ?, ?, ?)', [userId, moodType, moodScore, date, notes || null]);
-      
+      const { data: insertResult, error: insertError } = await query(
+        'INSERT INTO mood_logs (user_id, mood_type, mood_score, log_date, notes) VALUES (?, ?, ?, ?, ?)',
+        [userId, moodType, moodScore, date, notes || null],
+      );
+
       if (insertError || !insertResult) {
         return res.status(500).json({ error: 'Failed to log mood', details: insertError?.message });
       }
-      
+
       const { data: newLog } = await queryOne('SELECT * FROM mood_logs WHERE id = ?', [insertResult.insertId]);
       moodLog = newLog;
     }
@@ -64,7 +75,7 @@ const getMoodLogs = async (req, res) => {
     }
 
     sql += ' ORDER BY log_date DESC';
-    
+
     // IMPORTANT: MySQL doesn't accept LIMIT as a parameter in prepared statements
     const sanitizedLimit = Math.max(1, Math.min(parseInt(limit) || 30, 1000));
     sql += ` LIMIT ${sanitizedLimit}`;
@@ -91,7 +102,9 @@ const getMoodStatistics = async (req, res) => {
 
     const logsArray = logs || [];
     if (logsArray.length === 0) {
-      return res.status(200).json({ statistics: { averageMoodScore: 0, mostCommonMood: null, moodDistribution: {}, totalLogs: 0 } });
+      return res
+        .status(200)
+        .json({ statistics: { averageMoodScore: 0, mostCommonMood: null, moodDistribution: {}, totalLogs: 0 } });
     }
 
     const averageMoodScore = logsArray.reduce((sum, log) => sum + log.mood_score, 0) / logsArray.length;
@@ -101,9 +114,16 @@ const getMoodStatistics = async (req, res) => {
       return acc;
     }, {});
 
-    const mostCommonMood = Object.keys(moodCounts).reduce((a, b) => moodCounts[a] > moodCounts[b] ? a : b);
+    const mostCommonMood = Object.keys(moodCounts).reduce((a, b) => (moodCounts[a] > moodCounts[b] ? a : b));
 
-    res.status(200).json({ statistics: { averageMoodScore: parseFloat(averageMoodScore.toFixed(2)), mostCommonMood, moodDistribution: moodCounts, totalLogs: logsArray.length } });
+    res.status(200).json({
+      statistics: {
+        averageMoodScore: parseFloat(averageMoodScore.toFixed(2)),
+        mostCommonMood,
+        moodDistribution: moodCounts,
+        totalLogs: logsArray.length,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error', details: error.message });
   }

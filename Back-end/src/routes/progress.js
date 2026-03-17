@@ -5,7 +5,7 @@ const {
   getWeeklyProgress,
   getMonthlyProgress,
   getOverallProgress,
-  getDashboardData
+  getDashboardData,
 } = require('../controllers/progressController');
 
 router.get('/weekly', authenticateToken, getWeeklyProgress);

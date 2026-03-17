@@ -3,7 +3,7 @@ const router = express.Router();
 const {
   getMotivationalQuote,
   getHealthyAlternatives,
-  getRandomAlternative
+  getRandomAlternative,
 } = require('../controllers/contentController');
 
 router.get('/quote', getMotivationalQuote);
