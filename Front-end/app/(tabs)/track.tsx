@@ -75,36 +75,6 @@ export default function JourneyScreen() {
           />
         </View>
 
-        {/* Right Forest - Better Colorful Trees */}
-        <View style={styles.rightForest}>
-          {/* Main Tree Trunk */}
-          <View style={[styles.treeTrunk, { right: 20, width: 25, height: height * 0.8, backgroundColor: '#8B4513' }]} />
-          
-          {/* Tree Branches */}
-          <View style={[styles.treeBranch, { right: 10, top: height * 0.3, width: 40, height: 8, backgroundColor: '#8B4513' }]} />
-          <View style={[styles.treeBranch, { right: 35, top: height * 0.25, width: 35, height: 6, backgroundColor: '#8B4513' }]} />
-          <View style={[styles.treeBranch, { right: 5, top: height * 0.4, width: 30, height: 6, backgroundColor: '#8B4513' }]} />
-          <View style={[styles.treeBranch, { right: 40, top: height * 0.35, width: 25, height: 5, backgroundColor: '#8B4513' }]} />
-          
-          {/* Green Leaves Clusters */}
-          <View style={[styles.leafCluster, { right: 5, top: height * 0.28, width: 20, height: 20, backgroundColor: '#228B22' }]} />
-          <View style={[styles.leafCluster, { right: 15, top: height * 0.32, width: 18, height: 18, backgroundColor: '#32CD32' }]} />
-          <View style={[styles.leafCluster, { right: 25, top: height * 0.30, width: 16, height: 16, backgroundColor: '#00FF00' }]} />
-          <View style={[styles.leafCluster, { right: 35, top: height * 0.23, width: 22, height: 22, backgroundColor: '#228B22' }]} />
-          <View style={[styles.leafCluster, { right: 45, top: height * 0.27, width: 20, height: 20, backgroundColor: '#32CD32' }]} />
-          <View style={[styles.leafCluster, { right: 0, top: height * 0.38, width: 18, height: 18, backgroundColor: '#00FF00' }]} />
-          <View style={[styles.leafCluster, { right: 40, top: height * 0.33, width: 16, height: 16, backgroundColor: '#228B22' }]} />
-          <View style={[styles.leafCluster, { right: 50, top: height * 0.37, width: 15, height: 15, backgroundColor: '#32CD32' }]} />
-          
-          {/* Colorful Fruits */}
-          <View style={[styles.fruit, { right: 12, top: height * 0.31, width: 6, height: 6, backgroundColor: '#FF0000' }]} />
-          <View style={[styles.fruit, { right: 22, top: height * 0.29, width: 5, height: 5, backgroundColor: '#FF4500' }]} />
-          <View style={[styles.fruit, { right: 38, top: height * 0.26, width: 5, height: 5, backgroundColor: '#FFD700' }]} />
-          <View style={[styles.fruit, { right: 48, top: height * 0.30, width: 6, height: 6, backgroundColor: '#FF69B4' }]} />
-          <View style={[styles.fruit, { right: 8, top: height * 0.40, width: 5, height: 5, backgroundColor: '#9370DB' }]} />
-          <View style={[styles.fruit, { right: 45, top: height * 0.35, width: 5, height: 5, backgroundColor: '#FF0000' }]} />
-        </View>
-
         {/* Hanging Icicles */}
         <View style={styles.icicleContainer}>
           {Array.from({ length: 12 }).map((_, index) => (
