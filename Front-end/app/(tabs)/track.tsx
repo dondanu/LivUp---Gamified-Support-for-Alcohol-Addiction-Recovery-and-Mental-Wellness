@@ -9,7 +9,7 @@ import {
   Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Svg, { Path, Ellipse, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Ellipse, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check, Lock } from 'lucide-react-native';
 
@@ -66,10 +66,10 @@ export default function JourneyScreen() {
         start={{x: 0, y: 0}} 
         end={{x: 1, y: 1}}
       >
-        {/* Left Forest - PNG Tree Image */}
+        {/* Left Forest - PNG Tree2 Image */}
         <View style={styles.leftForest}>
           <Image 
-            source={require('../../assets/images/tree.png')} 
+            source={require('../../assets/images/tree5.png')} 
             style={styles.leftTreeImage}
             resizeMode="stretch"
           />
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    width: 140,
+    width: 160,
     height: height,
     zIndex: 1,
   },
@@ -406,10 +406,10 @@ const styles = StyleSheet.create({
   },
   leftTreeImage: {
     position: 'absolute',
-    left: -20,
+    left: 0,
     top: 0,
     width: 160,
-    height: height * 0.9,
+    height: height,
     zIndex: 1,
   },
   icicleContainer: {
