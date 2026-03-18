@@ -436,51 +436,51 @@ async function <span class="fstat-no" title="function not covered" >detectMilest
 &nbsp;
     // Determine milestone type based on event
 <span class="cstat-no" title="statement not covered" >    switch (eventType) {</span>
-    case 'achievement_unlocked':
-<span class="cstat-no" title="statement not covered" >      if (eventData.isFirstAchievement) {</span>
-<span class="cstat-no" title="statement not covered" >        milestoneType = 'first_achievement';</span>
-<span class="cstat-no" title="statement not covered" >        milestoneData = {</span>
-          achievementName: eventData.achievementName || 'Your First Achievement',
-          pointsEarned: eventData.pointsEarned || 0,
-        };
-      }
-<span class="cstat-no" title="statement not covered" >      break;</span>
+      case 'achievement_unlocked':
+<span class="cstat-no" title="statement not covered" >        if (eventData.isFirstAchievement) {</span>
+<span class="cstat-no" title="statement not covered" >          milestoneType = 'first_achievement';</span>
+<span class="cstat-no" title="statement not covered" >          milestoneData = {</span>
+            achievementName: eventData.achievementName || 'Your First Achievement',
+            pointsEarned: eventData.pointsEarned || 0,
+          };
+        }
+<span class="cstat-no" title="statement not covered" >        break;</span>
 &nbsp;
-    case 'challenge_completed':
-<span class="cstat-no" title="statement not covered" >      if (eventData.isFirstChallenge) {</span>
-<span class="cstat-no" title="statement not covered" >        milestoneType = 'first_challenge';</span>
-<span class="cstat-no" title="statement not covered" >        milestoneData = {</span>
-          challengeName: eventData.challengeName || 'Your First Challenge',
-          pointsEarned: eventData.pointsEarned || 0,
-        };
-      }
-<span class="cstat-no" title="statement not covered" >      break;</span>
+      case 'challenge_completed':
+<span class="cstat-no" title="statement not covered" >        if (eventData.isFirstChallenge) {</span>
+<span class="cstat-no" title="statement not covered" >          milestoneType = 'first_challenge';</span>
+<span class="cstat-no" title="statement not covered" >          milestoneData = {</span>
+            challengeName: eventData.challengeName || 'Your First Challenge',
+            pointsEarned: eventData.pointsEarned || 0,
+          };
+        }
+<span class="cstat-no" title="statement not covered" >        break;</span>
 &nbsp;
-    case 'points_earned':
-<span class="cstat-no" title="statement not covered" >      if (eventData.totalPoints &gt;= 150) {</span>
-<span class="cstat-no" title="statement not covered" >        milestoneType = 'points_150';</span>
-<span class="cstat-no" title="statement not covered" >        milestoneData = {</span>
-          totalPoints: eventData.totalPoints,
-        };
-      }
-<span class="cstat-no" title="statement not covered" >      break;</span>
+      case 'points_earned':
+<span class="cstat-no" title="statement not covered" >        if (eventData.totalPoints &gt;= 150) {</span>
+<span class="cstat-no" title="statement not covered" >          milestoneType = 'points_150';</span>
+<span class="cstat-no" title="statement not covered" >          milestoneData = {</span>
+            totalPoints: eventData.totalPoints,
+          };
+        }
+<span class="cstat-no" title="statement not covered" >        break;</span>
 &nbsp;
-    case 'usage_days':
-<span class="cstat-no" title="statement not covered" >      if (eventData.daysUsed === 3) {</span>
-<span class="cstat-no" title="statement not covered" >        milestoneType = 'usage_3_days';</span>
-<span class="cstat-no" title="statement not covered" >        milestoneData = {</span>
-          daysUsed: 3,
-        };
-      } else <span class="cstat-no" title="statement not covered" >if (eventData.daysUsed === 7) {</span>
-<span class="cstat-no" title="statement not covered" >        milestoneType = 'usage_7_days';</span>
-<span class="cstat-no" title="statement not covered" >        milestoneData = {</span>
-          daysUsed: 7,
-        };
-      }
-<span class="cstat-no" title="statement not covered" >      break;</span>
+      case 'usage_days':
+<span class="cstat-no" title="statement not covered" >        if (eventData.daysUsed === 3) {</span>
+<span class="cstat-no" title="statement not covered" >          milestoneType = 'usage_3_days';</span>
+<span class="cstat-no" title="statement not covered" >          milestoneData = {</span>
+            daysUsed: 3,
+          };
+        } else <span class="cstat-no" title="statement not covered" >if (eventData.daysUsed === 7) {</span>
+<span class="cstat-no" title="statement not covered" >          milestoneType = 'usage_7_days';</span>
+<span class="cstat-no" title="statement not covered" >          milestoneData = {</span>
+            daysUsed: 7,
+          };
+        }
+<span class="cstat-no" title="statement not covered" >        break;</span>
 &nbsp;
-    default:
-<span class="cstat-no" title="statement not covered" >      return { shouldShowPrompt: false, milestoneType: null, milestoneData: {} };</span>
+      default:
+<span class="cstat-no" title="statement not covered" >        return { shouldShowPrompt: false, milestoneType: null, milestoneData: {} };</span>
     }
 &nbsp;
     // If no milestone was reached, return early
@@ -491,7 +491,7 @@ async function <span class="fstat-no" title="function not covered" >detectMilest
     // Check if this prompt has already been shown
     const { data: existingPrompt, error: promptError } = <span class="cstat-no" title="statement not covered" >await queryOne(</span>
       'SELECT id FROM conversion_prompts WHERE user_id = ? AND milestone_type = ?',
-      [userId, milestoneType],
+      [userId, milestoneType]
     );
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (promptError) {</span>
@@ -529,7 +529,7 @@ async function <span class="fstat-no" title="function not covered" >recordPrompt
       `INSERT INTO conversion_prompts (user_id, milestone_type, dismissed, shown_at)
        VALUES (?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE shown_at = NOW(), dismissed = ?`,
-      [userId, milestoneType, dismissed, dismissed],
+      [userId, milestoneType, dismissed, dismissed]
     );
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (error) {</span>
@@ -577,7 +577,7 @@ module.exports = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-17T10:28:04.695Z
+                at 2026-03-18T12:14:52.837Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

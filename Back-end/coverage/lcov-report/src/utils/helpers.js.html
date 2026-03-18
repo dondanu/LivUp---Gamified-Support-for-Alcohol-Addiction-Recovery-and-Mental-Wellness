@@ -366,16 +366,16 @@ const determineLevel = <span class="fstat-no" title="function not covered" >(p</
 &nbsp;
 const checkAchievementEligibility = <span class="fstat-no" title="function not covered" >(u</span>serStats, achievement) =&gt; {
 <span class="cstat-no" title="statement not covered" >  switch (achievement.requirement_type) {</span>
-  case 'days_sober':
-<span class="cstat-no" title="statement not covered" >    return userStats.days_sober &gt;= achievement.requirement_value;</span>
-  case 'streak':
-<span class="cstat-no" title="statement not covered" >    return userStats.current_streak &gt;= achievement.requirement_value;</span>
-  case 'tasks_completed':
-<span class="cstat-no" title="statement not covered" >    return userStats.tasks_completed &gt;= achievement.requirement_value;</span>
-  case 'drinks_avoided':
-<span class="cstat-no" title="statement not covered" >    return userStats.drinks_avoided &gt;= achievement.requirement_value;</span>
-  default:
-<span class="cstat-no" title="statement not covered" >    return false;</span>
+    case 'days_sober':
+<span class="cstat-no" title="statement not covered" >      return userStats.days_sober &gt;= achievement.requirement_value;</span>
+    case 'streak':
+<span class="cstat-no" title="statement not covered" >      return userStats.current_streak &gt;= achievement.requirement_value;</span>
+    case 'tasks_completed':
+<span class="cstat-no" title="statement not covered" >      return userStats.tasks_completed &gt;= achievement.requirement_value;</span>
+    case 'drinks_avoided':
+<span class="cstat-no" title="statement not covered" >      return userStats.drinks_avoided &gt;= achievement.requirement_value;</span>
+    default:
+<span class="cstat-no" title="statement not covered" >      return false;</span>
   }
 };
 &nbsp;
@@ -388,44 +388,44 @@ const getDateRange = <span class="fstat-no" title="function not covered" >(p</sp
   let endDate = <span class="cstat-no" title="statement not covered" >new Date(today);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  switch (period) {</span>
-  case 'week': {
-    const dayOfWeek = <span class="cstat-no" title="statement not covered" >today.getDay();</span> // 0 = Sun, 1 = Mon, ... 6 = Sat
-    const diffToMonday = <span class="cstat-no" title="statement not covered" >(dayOfWeek + 6) % 7;</span> // Sun -&gt; 6, Mon -&gt; 0, Tue -&gt;1, ...
+    case 'week': {
+      const dayOfWeek = <span class="cstat-no" title="statement not covered" >today.getDay();</span> // 0 = Sun, 1 = Mon, ... 6 = Sat
+      const diffToMonday = <span class="cstat-no" title="statement not covered" >(dayOfWeek + 6) % 7;</span> // Sun -&gt; 6, Mon -&gt; 0, Tue -&gt;1, ...
 &nbsp;
-    // Start: Monday of current week
-<span class="cstat-no" title="statement not covered" >    startDate.setDate(today.getDate() - diffToMonday);</span>
-<span class="cstat-no" title="statement not covered" >    startDate.setHours(0, 0, 0, 0);</span>
+      // Start: Monday of current week
+<span class="cstat-no" title="statement not covered" >      startDate.setDate(today.getDate() - diffToMonday);</span>
+<span class="cstat-no" title="statement not covered" >      startDate.setHours(0, 0, 0, 0);</span>
 &nbsp;
-    // End: Sunday of the same week (may be in the future)
-<span class="cstat-no" title="statement not covered" >    endDate = new Date(startDate);</span>
-<span class="cstat-no" title="statement not covered" >    endDate.setDate(startDate.getDate() + 6);</span>
-<span class="cstat-no" title="statement not covered" >    endDate.setHours(23, 59, 59, 999);</span>
-<span class="cstat-no" title="statement not covered" >    break;</span>
-  }
-  case 'month': {
-    // Calendar month: from the 1st of the current month to the last day of the same month
-<span class="cstat-no" title="statement not covered" >    startDate = new Date(today.getFullYear(), today.getMonth(), 1);</span>
-<span class="cstat-no" title="statement not covered" >    startDate.setHours(0, 0, 0, 0);</span>
-    // Last day of current month: month+1, day 0 trick
-<span class="cstat-no" title="statement not covered" >    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);</span>
-<span class="cstat-no" title="statement not covered" >    endDate.setHours(23, 59, 59, 999);</span>
-<span class="cstat-no" title="statement not covered" >    break;</span>
-  }
-  case 'year': {
-<span class="cstat-no" title="statement not covered" >    startDate.setFullYear(today.getFullYear() - 1);</span>
-<span class="cstat-no" title="statement not covered" >    startDate.setHours(0, 0, 0, 0);</span>
-<span class="cstat-no" title="statement not covered" >    endDate.setHours(23, 59, 59, 999);</span>
-<span class="cstat-no" title="statement not covered" >    break;</span>
-  }
-  default: {
-    const dayOfWeek = <span class="cstat-no" title="statement not covered" >today.getDay();</span>
-    const diffToMonday = <span class="cstat-no" title="statement not covered" >(dayOfWeek + 6) % 7;</span>
-<span class="cstat-no" title="statement not covered" >    startDate.setDate(today.getDate() - diffToMonday);</span>
-<span class="cstat-no" title="statement not covered" >    startDate.setHours(0, 0, 0, 0);</span>
-<span class="cstat-no" title="statement not covered" >    endDate = new Date(startDate);</span>
-<span class="cstat-no" title="statement not covered" >    endDate.setDate(startDate.getDate() + 6);</span>
-<span class="cstat-no" title="statement not covered" >    endDate.setHours(23, 59, 59, 999);</span>
-  }
+      // End: Sunday of the same week (may be in the future)
+<span class="cstat-no" title="statement not covered" >      endDate = new Date(startDate);</span>
+<span class="cstat-no" title="statement not covered" >      endDate.setDate(startDate.getDate() + 6);</span>
+<span class="cstat-no" title="statement not covered" >      endDate.setHours(23, 59, 59, 999);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    }
+    case 'month': {
+      // Calendar month: from the 1st of the current month to the last day of the same month
+<span class="cstat-no" title="statement not covered" >      startDate = new Date(today.getFullYear(), today.getMonth(), 1);</span>
+<span class="cstat-no" title="statement not covered" >      startDate.setHours(0, 0, 0, 0);</span>
+      // Last day of current month: month+1, day 0 trick
+<span class="cstat-no" title="statement not covered" >      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);</span>
+<span class="cstat-no" title="statement not covered" >      endDate.setHours(23, 59, 59, 999);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    }
+    case 'year': {
+<span class="cstat-no" title="statement not covered" >      startDate.setFullYear(today.getFullYear() - 1);</span>
+<span class="cstat-no" title="statement not covered" >      startDate.setHours(0, 0, 0, 0);</span>
+<span class="cstat-no" title="statement not covered" >      endDate.setHours(23, 59, 59, 999);</span>
+<span class="cstat-no" title="statement not covered" >      break;</span>
+    }
+    default: {
+      const dayOfWeek = <span class="cstat-no" title="statement not covered" >today.getDay();</span>
+      const diffToMonday = <span class="cstat-no" title="statement not covered" >(dayOfWeek + 6) % 7;</span>
+<span class="cstat-no" title="statement not covered" >      startDate.setDate(today.getDate() - diffToMonday);</span>
+<span class="cstat-no" title="statement not covered" >      startDate.setHours(0, 0, 0, 0);</span>
+<span class="cstat-no" title="statement not covered" >      endDate = new Date(startDate);</span>
+<span class="cstat-no" title="statement not covered" >      endDate.setDate(startDate.getDate() + 6);</span>
+<span class="cstat-no" title="statement not covered" >      endDate.setHours(23, 59, 59, 999);</span>
+    }
   }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  return {</span>
@@ -448,7 +448,7 @@ module.exports = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-17T10:28:04.695Z
+                at 2026-03-18T12:14:52.837Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

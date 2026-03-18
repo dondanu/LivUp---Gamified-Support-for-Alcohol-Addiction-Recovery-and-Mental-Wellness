@@ -15,8 +15,8 @@
     "lint:fix": "eslint \"src/**/*.js\" \"__tests__/**/*.js\" \"*.js\" --fix",
     "lint:ci": "eslint \"src/**/*.js\" \"__tests__/**/*.js\" \"*.js\" --format=stylish --max-warnings=0",
     "lint:check": "npm run lint && echo 'Local lint passed' && npm run lint:ci && echo 'CI lint passed'",
-    "format": "prettier --write \"**/*.js\" --ignore-path .gitignore",
-    "format:check": "prettier --check \"**/*.js\" --ignore-path .gitignore",
+    "format": "prettier --write \"**/*.js\"",
+    "format:check": "prettier --check \"**/*.js\"",
     "docker:build": "docker build -t mind-fusion-backend .",
     "docker:run": "docker-compose up",
     "docker:stop": "docker-compose down"
