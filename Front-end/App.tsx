@@ -107,33 +107,69 @@ function AuthNavigator() {
 }
 
 function RootNavigator() {
-  const { user, loading, isAnonymous, pendingNavigation } = useAuth();
+  const { user, loading, isAnonymous, forceShowIntro } = useAuth();
   const [introShown, setIntroShown] = useState<boolean | null>(null);
 
   useEffect(() => {
+    console.log('[RootNavigator] useEffect: Checking intro status');
+    console.log('[RootNavigator] useEffect: user:', user ? 'exists' : 'null');
+    console.log('[RootNavigator] useEffect: isAnonymous:', isAnonymous);
+    console.log('[RootNavigator] useEffect: loading:', loading);
+    console.log('[RootNavigator] useEffect: forceShowIntro:', forceShowIntro);
+    
     const checkIntro = async () => {
-      const shown = await AsyncStorage.getItem('@intro_shown');
-      setIntroShown(shown === 'true');
+      try {
+        const shown = await AsyncStorage.getItem('@intro_shown');
+        console.log('[RootNavigator] checkIntro: intro_shown flag:', shown);
+        setIntroShown(shown === 'true');
+      } catch (error) {
+        console.error('[RootNavigator] checkIntro: Error checking intro status:', error);
+        setIntroShown(false); // Default to showing intro on error
+      }
     };
     checkIntro();
-  }, [user, isAnonymous]);
+  }, [user, isAnonymous, loading, forceShowIntro]);
 
   if (loading || introShown === null) {
+    console.log('[RootNavigator] Showing loading screen - loading:', loading, 'introShown:', introShown);
     return <IndexScreen />;
   }
 
+  // Determine which navigator to show
+  const isAuthenticated = user || isAnonymous;
+  const shouldShowIntro = !introShown || forceShowIntro; // FORCE INTRO IF FLAG IS SET
+  
+  console.log('[RootNavigator] Navigation decision:');
+  console.log('[RootNavigator] - isAuthenticated:', isAuthenticated);
+  console.log('[RootNavigator] - introShown:', introShown);
+  console.log('[RootNavigator] - forceShowIntro:', forceShowIntro);
+  console.log('[RootNavigator] - shouldShowIntro:', shouldShowIntro);
+  
+  let finalDecision;
+  if (isAuthenticated && !forceShowIntro) { // Don't go to tabs if forcing intro
+    finalDecision = 'Tabs';
+  } else if (shouldShowIntro) {
+    finalDecision = 'Intro';
+  } else {
+    finalDecision = 'Auth';
+  }
+  
+  console.log('[RootNavigator] - Final decision:', finalDecision);
+  console.log('[RootNavigator] - Will render stack with initialRouteName:', finalDecision);
+
   return (
     <Stack.Navigator 
-      key={user || isAnonymous ? 'authenticated' : 'unauthenticated'}
+      key={`${isAuthenticated ? 'authenticated' : 'unauthenticated'}-${forceShowIntro ? 'force-intro' : 'normal'}`}
       screenOptions={{ 
         headerShown: false,
         animation: 'none',
         animationDuration: 0,
       }}
-      initialRouteName={user || isAnonymous ? 'Tabs' : (introShown ? 'Auth' : 'Intro')}
+      initialRouteName={finalDecision}
     >
-      {user || isAnonymous ? (
+      {isAuthenticated && !forceShowIntro ? (
         <>
+          {console.log('[RootNavigator] Rendering authenticated stack (Tabs)')}
           <Stack.Screen name="Tabs" component={TabNavigator} />
           <Stack.Screen name="SOS" component={SOSScreen} />
           <Stack.Screen 
@@ -154,6 +190,10 @@ function RootNavigator() {
         </>
       ) : (
         <>
+          {console.log('[RootNavigator] Rendering unauthenticated stack (Intro/Auth)')}
+          {console.log('[RootNavigator] - shouldShowIntro:', shouldShowIntro)}
+          {console.log('[RootNavigator] - forceShowIntro:', forceShowIntro)}
+          {console.log('[RootNavigator] - Will show Intro screen:', shouldShowIntro)}
           <Stack.Screen name="Intro" component={IntroScreen} />
           <Stack.Screen name="Auth" component={AuthNavigator} />
         </>

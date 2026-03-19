@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Heart } from 'lucide-react-native';
 
 export default function LoginScreen() {
+  console.log('[LoginScreen] ===== LOGIN SCREEN COMPONENT RENDERED =====');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
