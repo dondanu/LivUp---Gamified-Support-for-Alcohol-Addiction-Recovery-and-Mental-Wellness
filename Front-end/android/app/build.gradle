@@ -78,6 +78,10 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.vimmi404"
+    
+    buildFeatures {
+        buildConfig = true
+    }
     defaultConfig {
         applicationId "com.vimmi404"
         minSdkVersion rootProject.ext.minSdkVersion
