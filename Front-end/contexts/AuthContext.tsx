@@ -18,6 +18,7 @@ interface AuthContextType {
   isAnonymous: boolean;
   anonymousData: AnonymousUserData | null;
   pendingNavigation: string | null;
+  forceShowIntro: boolean;
   signUp: (email: string, password: string, username?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [anonymousData, setAnonymousData] = useState<AnonymousUserData | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const [forceShowIntro, setForceShowIntro] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -81,47 +83,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    console.log('[AuthContext] useEffect: Starting auth check');
     // Check if user is already authenticated (has token)
     const checkAuth = async () => {
       try {
+        console.log('[AuthContext] checkAuth: Checking authentication status');
         // First check if in anonymous mode
         const isAnonMode = await anonymousStorage.isAnonymousMode();
+        console.log('[AuthContext] checkAuth: Anonymous mode:', isAnonMode);
         
         if (isAnonMode) {
           // User is in anonymous mode - no API calls needed
+          console.log('[AuthContext] checkAuth: Setting anonymous mode');
           setIsAnonymous(true);
           const data = await anonymousStorage.getData();
           setAnonymousData(data);
           setUser(null);
           setProfile(null);
           setLoading(false);
+          console.log('[AuthContext] checkAuth: Anonymous mode setup complete');
           return;
         }
         
         // Check if we have a token
         const token = await tokenManager.getToken();
+        console.log('[AuthContext] checkAuth: Token exists:', !!token);
         
         if (token) {
           // Only try to fetch profile if we have a token
           try {
+            console.log('[AuthContext] checkAuth: Fetching user profile');
             await fetchProfile();
+            console.log('[AuthContext] checkAuth: Profile fetched successfully');
           } catch (profileError: any) {
             // Profile fetch failed - clear auth state
-            console.log('Profile fetch failed, clearing auth state');
+            console.log('[AuthContext] checkAuth: Profile fetch failed, clearing auth state');
             setUser(null);
             setProfile(null);
           }
         } else {
           // No token, user is not authenticated
+          console.log('[AuthContext] checkAuth: No token found, user not authenticated');
           setUser(null);
           setProfile(null);
         }
       } catch (error: any) {
         // Not authenticated or token expired or network error
-        console.log('Auth check failed:', error.message);
+        console.log('[AuthContext] checkAuth: Auth check failed:', error.message);
         setUser(null);
         setProfile(null);
       } finally {
+        console.log('[AuthContext] checkAuth: Auth check completed, setting loading to false');
         setLoading(false);
       }
     };
@@ -202,27 +214,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    console.log('[AuthContext] signOut: Starting sign out process');
     try {
       if (isAnonymous) {
+        console.log('[AuthContext] signOut: User is anonymous, disabling anonymous mode');
         await anonymousStorage.disableAnonymousMode();
         setIsAnonymous(false);
         setAnonymousData(null);
         setUser(null);
         setProfile(null);
+        console.log('[AuthContext] signOut: Anonymous mode disabled successfully');
       } else {
+        console.log('[AuthContext] signOut: User is registered, calling logout API');
         await logout();
         setUser(null);
         setProfile(null);
+        console.log('[AuthContext] signOut: Registered user logged out successfully');
       }
+      
+      // Clear intro shown flag to force showing intro screen
+      console.log('[AuthContext] signOut: Clearing intro shown flag to show intro screen');
+      try {
+        await AsyncStorage.removeItem('@intro_shown');
+        console.log('[AuthContext] signOut: ✅ Successfully removed @intro_shown flag');
+        
+        // Verify it was actually removed
+        const checkFlag = await AsyncStorage.getItem('@intro_shown');
+        console.log('[AuthContext] signOut: ✅ Verification - @intro_shown flag is now:', checkFlag);
+        
+        // FORCE IMMEDIATE NAVIGATION TO INTRO
+        console.log('[AuthContext] signOut: 🚀 FORCING IMMEDIATE NAVIGATION TO INTRO');
+        // We'll trigger this through a state change that forces re-render
+        setForceShowIntro(true);
+        
+        // Reset the force flag after a short delay to allow normal navigation flow
+        setTimeout(() => {
+          console.log('[AuthContext] signOut: 🔄 Resetting forceShowIntro flag');
+          setForceShowIntro(false);
+        }, 100);
+        
+      } catch (flagError) {
+        console.error('[AuthContext] signOut: ❌ Error removing @intro_shown flag:', flagError);
+      }
+      
+      console.log('[AuthContext] signOut: Sign out process completed successfully');
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('[AuthContext] signOut: Error during sign out:', error);
       if (isAnonymous) {
+        console.log('[AuthContext] signOut: Fallback - force clearing anonymous mode');
         await anonymousStorage.disableAnonymousMode();
         setIsAnonymous(false);
         setAnonymousData(null);
       }
       setUser(null);
       setProfile(null);
+      // Still clear intro flag even on error
+      console.log('[AuthContext] signOut: Fallback - clearing intro flag even on error');
+      try {
+        await AsyncStorage.removeItem('@intro_shown');
+        console.log('[AuthContext] signOut: ✅ Fallback - Successfully removed @intro_shown flag');
+      } catch (flagError) {
+        console.error('[AuthContext] signOut: ❌ Fallback - Error removing @intro_shown flag:', flagError);
+      }
+      console.log('[AuthContext] signOut: Fallback sign out completed');
     }
   };
 
@@ -309,6 +363,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAnonymous,
     anonymousData,
     pendingNavigation,
+    forceShowIntro,
     signUp,
     signIn,
     signOut,
