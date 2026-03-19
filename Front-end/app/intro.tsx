@@ -13,17 +13,35 @@ import Video from 'react-native-video';
 const INTRO_SHOWN_KEY = '@intro_shown';
 
 export default function IntroScreen() {
+  console.log('[IntroScreen] ===== INTRO SCREEN COMPONENT RENDERED =====');
   const navigation = useNavigation();
   const buttonScale = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const videoRef = useRef<any>(null);
 
-  const handleNavigateToLogin = () => {
-    // Mark intro as shown
-    AsyncStorage.setItem(INTRO_SHOWN_KEY, 'true');
+  useEffect(() => {
+    console.log('[IntroScreen] useEffect: Component mounted - INTRO SCREEN IS ACTIVE');
+    return () => {
+      console.log('[IntroScreen] useEffect cleanup: Component unmounted');
+    };
+  }, []);
 
-    // Navigate with replace (instant)
-    (navigation as any).replace('Auth');
+  const handleNavigateToLogin = () => {
+    console.log('[IntroScreen] handleNavigateToLogin: User clicked Sign In/Sign Up button');
+    
+    // Mark intro as shown
+    AsyncStorage.setItem(INTRO_SHOWN_KEY, 'true')
+      .then(() => {
+        console.log('[IntroScreen] handleNavigateToLogin: Intro shown flag set to true');
+        // Navigate with replace (instant)
+        console.log('[IntroScreen] handleNavigateToLogin: Navigating to Auth screen');
+        (navigation as any).replace('Auth');
+      })
+      .catch((error) => {
+        console.error('[IntroScreen] handleNavigateToLogin: Error setting intro flag:', error);
+        // Still navigate even if flag setting fails
+        (navigation as any).replace('Auth');
+      });
   };
 
   return (

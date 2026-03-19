@@ -129,19 +129,28 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = async () => {
+    console.log('[Profile] handleSignOut: Sign out button pressed');
     const message = isAnonymous 
       ? 'Exit anonymous mode? Your progress will be lost unless you create an account.'
       : 'Are you sure you want to sign out?';
     
     Alert.alert('Sign Out', message, [
-      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Cancel', 
+        style: 'cancel',
+        onPress: () => console.log('[Profile] handleSignOut: User cancelled sign out')
+      },
       {
         text: isAnonymous ? 'Exit' : 'Sign Out',
         style: 'destructive',
         onPress: async () => {
-          await signOut();
-          // Navigation will be handled automatically by App.tsx
-          // when auth state changes (user becomes null and isAnonymous becomes false)
+          console.log('[Profile] handleSignOut: User confirmed sign out');
+          try {
+            await signOut();
+            console.log('[Profile] handleSignOut: Sign out completed, navigation should happen automatically');
+          } catch (error) {
+            console.error('[Profile] handleSignOut: Error during sign out:', error);
+          }
         },
       },
     ]);
