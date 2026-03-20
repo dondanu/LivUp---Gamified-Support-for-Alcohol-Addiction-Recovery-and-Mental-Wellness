@@ -186,24 +186,10 @@ app.get('/', (req, res) => {
 app.get('/api', (req, res) => {
   // Check if request wants JSON (from API calls)
   if (req.headers.accept && req.headers.accept.includes('application/json')) {
-    res.status(200).json({
+    res.json({
       name: 'Mind Fusion API',
       status: 'OK',
-      health: '/api/health',
-      groups: {
-        auth: '/api/auth',
-        drinks: '/api/drinks',
-        mood: '/api/mood',
-        triggers: '/api/triggers',
-        gamification: '/api/gamification',
-        tasks: '/api/tasks',
-        content: '/api/content',
-        sos: '/api/sos',
-        settings: '/api/settings',
-        progress: '/api/progress',
-        insights: '/api/insights',
-      },
-      generatedAt: new Date().toISOString(),
+      groups: []
     });
   } else {
     // Serve beautiful HTML dashboard for browser visits
