@@ -58,11 +58,28 @@
 │                                      ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐│
 │  │                           DATABASE LAYER                                    ││
-│  │                            (SQLite/MySQL)                                   ││
+│  │                            (MySQL Database)                                 ││
 │  │                                                                             ││
 │  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐          ││
-│  │  │    Users    │ │ Drink_Logs  │ │  Mood_Logs  │ │   Tasks     │          ││
+│  │  │    Users    │ │ Drink_Logs  │ │  Mood_Logs  │ │ Triggers    │          ││
 │  │  │    Table    │ │    Table    │ │    Table    │ │   Table     │          ││
+│  │  │             │ │             │ │             │ │             │          ││
+│  │  │ • id        │ │ • log_id    │ │ • log_id    │ │ • log_id    │          ││
+│  │  │ • username  │ │ • user_id   │ │ • user_id   │ │ • user_id   │          ││
+│  │  │ • password  │ │ • drink_cnt │ │ • mood_type │ │ • trigger   │          ││
+│  │  │ • email     │ │ • log_date  │ │ • mood_scr  │ │ • intensity │          ││
+│  │  │ • created   │ │ • notes     │ │ • log_date  │ │ • log_date  │          ││
+│  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘          ││
+│  │                                                                             ││
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐          ││
+│  │  │    Tasks    │ │User_Profiles│ │Achievements │ │ SOS_Contacts│          ││
+│  │  │    Table    │ │    Table    │ │    Table    │ │    Table    │          ││
+│  │  │             │ │             │ │             │ │             │          ││
+│  │  │ • task_id   │ │ • user_id   │ │ • ach_id    │ │ • contact_id│          ││
+│  │  │ • title     │ │ • points    │ │ • user_id   │ │ • user_id   │          ││
+│  │  │ • category  │ │ • level     │ │ • name      │ │ • name      │          ││
+│  │  │ • points    │ │ • avatar    │ │ • earned_at │ │ • phone     │          ││
+│  │  │ • active    │ │ • streak    │ │ • points    │ │ • relation  │          ││
 │  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘          ││
 │  └─────────────────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────────────┘
