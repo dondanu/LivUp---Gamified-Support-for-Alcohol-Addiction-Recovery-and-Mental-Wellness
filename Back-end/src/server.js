@@ -28,7 +28,7 @@ app.get('/api', (req, res) => {
   res.json({
     name: 'Mind Fusion API',
     status: 'OK',
-    groups: []
+    groups: [],
   });
 });
 
