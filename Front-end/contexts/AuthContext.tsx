@@ -215,6 +215,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     console.log('[AuthContext] signOut: Starting sign out process');
+    
+    // FORCE INTRO IMMEDIATELY - BEFORE ANYTHING ELSE
+    console.log('[AuthContext] signOut: 🚀 SETTING forceShowIntro = true IMMEDIATELY');
+    setForceShowIntro(true);
+    
     try {
       if (isAnonymous) {
         console.log('[AuthContext] signOut: User is anonymous, disabling anonymous mode');
@@ -242,22 +247,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const checkFlag = await AsyncStorage.getItem('@intro_shown');
         console.log('[AuthContext] signOut: ✅ Verification - @intro_shown flag is now:', checkFlag);
         
-        // FORCE IMMEDIATE NAVIGATION TO INTRO
-        console.log('[AuthContext] signOut: 🚀 FORCING IMMEDIATE NAVIGATION TO INTRO');
-        // We'll trigger this through a state change that forces re-render
-        setForceShowIntro(true);
-        
-        // Reset the force flag after a short delay to allow normal navigation flow
-        setTimeout(() => {
-          console.log('[AuthContext] signOut: 🔄 Resetting forceShowIntro flag');
-          setForceShowIntro(false);
-        }, 100);
-        
       } catch (flagError) {
         console.error('[AuthContext] signOut: ❌ Error removing @intro_shown flag:', flagError);
       }
       
       console.log('[AuthContext] signOut: Sign out process completed successfully');
+      
+      // Reset the force flag after a longer delay to ensure navigation completes
+      setTimeout(() => {
+        console.log('[AuthContext] signOut: 🔄 Resetting forceShowIntro flag');
+        setForceShowIntro(false);
+      }, 500); // Increased delay to 500ms
+      
     } catch (error) {
       console.error('[AuthContext] signOut: Error during sign out:', error);
       if (isAnonymous) {
@@ -277,6 +278,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('[AuthContext] signOut: ❌ Fallback - Error removing @intro_shown flag:', flagError);
       }
       console.log('[AuthContext] signOut: Fallback sign out completed');
+      
+      // Reset force flag even on error
+      setTimeout(() => {
+        console.log('[AuthContext] signOut: 🔄 Fallback - Resetting forceShowIntro flag');
+        setForceShowIntro(false);
+      }, 500);
     }
   };
 
