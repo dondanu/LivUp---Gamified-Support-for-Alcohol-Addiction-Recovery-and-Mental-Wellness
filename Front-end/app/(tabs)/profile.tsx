@@ -146,8 +146,9 @@ export default function ProfileScreen() {
         onPress: async () => {
           console.log('[Profile] handleSignOut: User confirmed sign out');
           try {
+            console.log('[Profile] handleSignOut: Calling AuthContext signOut - navigation will be handled automatically');
             await signOut();
-            console.log('[Profile] handleSignOut: Sign out completed, navigation should happen automatically');
+            console.log('[Profile] handleSignOut: Sign out completed - AuthContext should handle navigation to Intro screen');
           } catch (error) {
             console.error('[Profile] handleSignOut: Error during sign out:', error);
           }
