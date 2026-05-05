@@ -194,7 +194,9 @@ export default function ProfileScreen() {
             </LinearGradient>
             <View style={styles.avatarBadge}>
               <Sparkles size={16} color="#FFD700" />
-              <Text style={styles.avatarBadgeText}>{profile?.avatar_level || 1}</Text>
+              <Text style={styles.avatarBadgeText}>
+                {getLevelName(profile?.level_id || 1)}
+              </Text>
             </View>
           </View>
 
@@ -210,7 +212,11 @@ export default function ProfileScreen() {
             ) : (
               <Text style={styles.username}>{profile?.username || 'User'}</Text>
             )}
-            <Text style={styles.level}>Level {profile?.level_id || 1}</Text>
+            <Text style={styles.level}>
+              {profile?.level_id 
+                ? `Level ${profile.level_id} - ${getLevelName(profile.level_id)}` 
+                : 'Beginner'}
+            </Text>
           </View>
 
           <TouchableOpacity
