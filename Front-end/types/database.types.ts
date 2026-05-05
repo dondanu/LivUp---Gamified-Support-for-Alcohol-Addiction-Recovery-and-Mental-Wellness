@@ -8,6 +8,7 @@ export interface Profile {
   current_streak: number;
   longest_streak: number;
   level: string;
+  level_id?: number; // Add level_id field
   created_at: string;
   updated_at: string;
 }
@@ -41,7 +42,8 @@ export interface TriggerLog {
 
 export interface Challenge {
   id: string;
-  title: string;
+  title?: string;
+  task_name?: string; // Backend uses task_name
   description: string;
   points_reward: number;
   difficulty: string;
@@ -76,14 +78,21 @@ export interface UserBadge {
   earned_at: string;
   created_at: string;
   badges?: Badge;
+  // Achievement fields (from gamification API)
+  achievement_id?: string;
+  achievement_name?: string;
+  name?: string;
+  description?: string;
+  points_reward?: number;
 }
 
 export interface HealthyAlternative {
   id: string;
-  title: string;
+  title?: string;
+  activity_name?: string; // Backend uses activity_name
   description: string;
   category: string;
-  duration_minutes: number;
+  duration_minutes?: number;
   created_at: string;
 }
 

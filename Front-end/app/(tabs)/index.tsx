@@ -98,13 +98,13 @@ export default function HomeScreen() {
         try {
           const gamificationResponse = await api.getGamificationProfile();
           if (gamificationResponse?.profile?.total_points !== undefined) {
-            setTotalPoints(gamificationResponse.profile.total_points || (todaysPoints || profile.total_points || 0));
+            setTotalPoints(gamificationResponse.profile.total_points);
           } else {
-            setTotalPoints(profile.total_points || todaysPoints || 0);
+            setTotalPoints(todaysPoints || profile.total_points || 0);
           }
         } catch (pointsError) {
           console.error('Error loading total points:', pointsError);
-          setTotalPoints(profile.total_points || todaysPoints || 0);
+          setTotalPoints(todaysPoints || profile.total_points || 0);
         }
       }
     } catch (error) {
@@ -117,7 +117,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadData();
-  }, [profile]);
+  }, [profile?.id, isAnonymous]); // Only reload when user changes, not on every profile update
 
   useFocusEffect(
     React.useCallback(() => {
@@ -141,6 +141,19 @@ export default function HomeScreen() {
 
   const handleSOS = () => {
     navigation.navigate('SOS' as never);
+  };
+
+  const getLevelName = (levelId: number): string => {
+    const levelNames: { [key: number]: string } = {
+      1: 'Beginner',
+      2: 'Apprentice',
+      3: 'Warrior',
+      4: 'Champion',
+      5: 'Master',
+      6: 'Legend',
+      7: 'Phoenix',
+    };
+    return levelNames[levelId] || 'Beginner';
   };
 
   if (loading) {
@@ -205,10 +218,14 @@ export default function HomeScreen() {
         <View style={styles.levelCard}>
           <LinearGradient colors={['#F093FB', '#F5576C']} style={styles.levelGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
             <Text style={styles.levelTitle}>Current Level</Text>
-            <Text style={styles.levelValue}>{isAnonymous ? 'Beginner' : (profile?.level || 'Beginner')}</Text>
+            <Text style={styles.levelValue}>Level {isAnonymous ? 1 : (profile?.level_id || 1)}</Text>
             <View style={styles.avatarLevelContainer}>
               <Award size={24} color="#FFFFFF" />
-              <Text style={styles.avatarLevelText}>Avatar Level {isAnonymous ? 1 : (profile?.avatar_level || 1)}</Text>
+              <Text style={styles.avatarLevelText}>
+                {isAnonymous 
+                  ? 'Beginner' 
+                  : getLevelName(profile?.level_id || 1)}
+              </Text>
             </View>
           </LinearGradient>
         </View>

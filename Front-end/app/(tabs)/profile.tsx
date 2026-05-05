@@ -13,7 +13,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
   User,
   LogOut,
@@ -46,7 +46,16 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     loadProfileData();
-  }, [profile]);
+  }, [profile?.id]); // Only reload when user changes, not on every profile update
+
+  // Refresh profile when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (profile?.id) {
+        refreshProfile();
+      }
+    }, [profile?.id])
+  );
 
   const loadProfileData = async () => {
     if (!profile?.id) return;
@@ -162,6 +171,19 @@ export default function ProfileScreen() {
     return Math.min(((points % 1000) / 1000) * 100, 100);
   };
 
+  const getLevelName = (levelId: number): string => {
+    const levelNames: { [key: number]: string } = {
+      1: 'Beginner',
+      2: 'Apprentice',
+      3: 'Warrior',
+      4: 'Champion',
+      5: 'Master',
+      6: 'Legend',
+      7: 'Phoenix',
+    };
+    return levelNames[levelId] || 'Beginner';
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.header} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
@@ -188,7 +210,7 @@ export default function ProfileScreen() {
             ) : (
               <Text style={styles.username}>{profile?.username || 'User'}</Text>
             )}
-            <Text style={styles.level}>{profile?.level || 'Beginner'}</Text>
+            <Text style={styles.level}>Level {profile?.level_id || 1}</Text>
           </View>
 
           <TouchableOpacity

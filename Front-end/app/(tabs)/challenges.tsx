@@ -206,8 +206,10 @@ export default function ChallengesScreen() {
         // Registered user - use API
         const response = await api.completeChallenge(challengeId);
         Alert.alert('Congratulations!', `You earned ${pointsReward} points!`);
+        
+        // Force refresh profile AND reload challenges to get updated points
         await refreshProfile();
-        loadChallenges();
+        await loadChallenges();
       }
     } catch (error: any) {
       console.error('Error completing challenge:', error);

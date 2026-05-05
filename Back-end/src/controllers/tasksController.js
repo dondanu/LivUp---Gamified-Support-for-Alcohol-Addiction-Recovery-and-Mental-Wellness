@@ -177,9 +177,17 @@ const completeTask = async (req, res) => {
 
     const newTotalPoints = profile.total_points + task.points_reward;
 
-    await query('UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?', [
+    // Determine new level based on points
+    const { data: levels } = await query('SELECT * FROM levels ORDER BY points_required ASC', []);
+    const { determineLevel } = require('../utils/helpers');
+    const newLevel = determineLevel(newTotalPoints, levels || []);
+
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    await query('UPDATE user_profiles SET total_points = ?, level_id = ?, avatar_type = ?, updated_at = ? WHERE user_id = ?', [
       newTotalPoints,
-      new Date().toISOString(),
+      newLevel.id,
+      newLevel.avatar_unlock,
+      now,
       userId,
     ]);
 

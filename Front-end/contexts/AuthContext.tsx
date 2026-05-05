@@ -42,7 +42,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async () => {
     try {
+      console.log('[AuthContext] fetchProfile: Fetching latest profile data');
       const response = await getProfile();
+      
+      console.log('[AuthContext] fetchProfile: Profile response:', {
+        total_points: response.profile.total_points,
+        level_id: response.profile.level_id,
+      });
       
       // Map backend response to frontend User type
       const userData: User = {
@@ -58,15 +64,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: response.profile.id,
         user_id: response.profile.user_id,
         username: response.user.username,
-        avatar_level: response.profile.avatar_type ? parseInt(response.profile.avatar_type) || 1 : 1,
+        avatar_level: response.profile.level_id || 1, // Use level_id as avatar_level
         is_anonymous: response.user.is_anonymous,
         total_points: response.profile.total_points || 0,
         current_streak: response.profile.current_streak || 0,
         longest_streak: response.profile.longest_streak || 0,
-        level: `Level ${response.profile.level_id || 1}`, // You may need to fetch level name
+        level: `Level ${response.profile.level_id || 1}`,
+        level_id: response.profile.level_id || 1, // Add level_id
         created_at: response.profile.created_at,
         updated_at: response.profile.updated_at,
       };
+      
+      console.log('[AuthContext] fetchProfile: Setting profile state with:', {
+        total_points: profileData.total_points,
+        level_id: profileData.level_id,
+      });
+      
       setProfile(profileData);
     } catch (error: any) {
       // Don't log error if we're in anonymous mode
