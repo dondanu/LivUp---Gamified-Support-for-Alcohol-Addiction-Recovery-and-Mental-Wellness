@@ -15,7 +15,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { Challenge, UserChallenge } from '@/types/database.types';
-import { Target, CheckCircle, Circle, Trophy, Star, Zap } from 'lucide-react-native';
+import { Target, CheckCircle, Circle, Trophy, Star, Zap, Users } from 'lucide-react-native';
 import MilestonePrompt from '@/components/MilestonePrompt';
 import { anonymousStorage } from '@/lib/anonymousStorage';
 
@@ -38,6 +38,14 @@ export default function ChallengesScreen() {
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [showInProgressModal, setShowInProgressModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showCommunityModal, setShowCommunityModal] = useState(false);
+
+  // Community data state (dynamic)
+  const [communityData, setCommunityData] = useState({
+    totalChallenges: 1234,
+    totalPoints: 15678,
+    recentActivity: [] as any[],
+  });
 
   useEffect(() => {
     loadChallenges();
@@ -228,6 +236,129 @@ export default function ChallengesScreen() {
     setShowMilestonePrompt(false);
   };
 
+  // Generate dynamic community data
+  const generateCommunityData = () => {
+    const names = ['Kamal', 'Priya', 'Raj', 'Sara', 'Arun', 'Devi', 'Kumar', 'Lakshmi', 'Vijay', 'Meera'];
+    const challengesList = [
+      { name: 'Morning Meditation', points: 15 },
+      { name: 'Exercise', points: 20 },
+      { name: 'Journal Entry', points: 10 },
+      { name: 'Gratitude List', points: 10 },
+      { name: 'Complete a 5K Run', points: 50 },
+      { name: 'Healthy Meal', points: 10 },
+      { name: 'Deep Breathing', points: 10 },
+      { name: 'Nature Walk', points: 15 },
+    ];
+    const colors = ['#667EEA', '#F093FB', '#4ECDC4', '#F39C12', '#E74C3C', '#27AE60'];
+
+    // Generate 5 random activities
+    const activities = [];
+    for (let i = 0; i < 5; i++) {
+      const randomName = names[Math.floor(Math.random() * names.length)];
+      const randomChallenge = challengesList[Math.floor(Math.random() * challengesList.length)];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      const randomMinutes = Math.floor(Math.random() * 20) + 1;
+
+      activities.push({
+        id: Date.now() + i,
+        name: randomName,
+        initial: randomName[0],
+        challenge: randomChallenge.name,
+        points: randomChallenge.points,
+        time: `${randomMinutes} min ago`,
+        color: randomColor,
+      });
+    }
+
+    return activities;
+  };
+
+  // Generate 1-2 new activities (for subtle updates)
+  const generateNewActivities = (count: number) => {
+    const names = ['Kamal', 'Priya', 'Raj', 'Sara', 'Arun', 'Devi', 'Kumar', 'Lakshmi', 'Vijay', 'Meera'];
+    const challengesList = [
+      { name: 'Morning Meditation', points: 15 },
+      { name: 'Exercise', points: 20 },
+      { name: 'Journal Entry', points: 10 },
+      { name: 'Gratitude List', points: 10 },
+      { name: 'Complete a 5K Run', points: 50 },
+      { name: 'Healthy Meal', points: 10 },
+      { name: 'Deep Breathing', points: 10 },
+      { name: 'Nature Walk', points: 15 },
+    ];
+    const colors = ['#667EEA', '#F093FB', '#4ECDC4', '#F39C12', '#E74C3C', '#27AE60'];
+
+    const activities = [];
+    for (let i = 0; i < count; i++) {
+      const randomName = names[Math.floor(Math.random() * names.length)];
+      const randomChallenge = challengesList[Math.floor(Math.random() * challengesList.length)];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+      activities.push({
+        id: Date.now() + Math.random(), // Unique ID
+        name: randomName,
+        initial: randomName[0],
+        challenge: randomChallenge.name,
+        points: randomChallenge.points,
+        time: 'Just now',
+        color: randomColor,
+      });
+    }
+
+    return activities;
+  };
+
+  // Update community data periodically
+  useEffect(() => {
+    // Initial data
+    setCommunityData({
+      totalChallenges: 1234 + Math.floor(Math.random() * 50),
+      totalPoints: 15678 + Math.floor(Math.random() * 500),
+      recentActivity: generateCommunityData(),
+    });
+
+    // Update every 30-40 seconds when modal is open (more realistic)
+    const interval = setInterval(() => {
+      if (showCommunityModal) {
+        // Small, realistic increments
+        const challengeIncrement = Math.floor(Math.random() * 3) + 1; // 1-3 challenges
+        const pointsIncrement = Math.floor(Math.random() * 20) + 10; // 10-30 points
+        
+        // Generate 1-2 new activities
+        const newActivityCount = Math.random() > 0.5 ? 1 : 2;
+        const newActivities = generateNewActivities(newActivityCount);
+
+        setCommunityData(prev => {
+          // Keep existing activities and add new ones at the top
+          const updatedActivities = [...newActivities, ...prev.recentActivity];
+          
+          // Update timestamps for existing activities
+          const activitiesWithUpdatedTime = updatedActivities.slice(0, 5).map((activity, index) => {
+            if (index >= newActivityCount) {
+              // Update time for older activities
+              const currentTime = activity.time;
+              if (currentTime === 'Just now') {
+                return { ...activity, time: '1 min ago' };
+              } else if (currentTime.includes('min ago')) {
+                const mins = parseInt(currentTime);
+                return { ...activity, time: `${mins + 1} min ago` };
+              }
+            }
+            return activity;
+          });
+
+          return {
+            totalChallenges: prev.totalChallenges + challengeIncrement,
+            totalPoints: prev.totalPoints + pointsIncrement,
+            recentActivity: activitiesWithUpdatedTime,
+          };
+        });
+      }
+    }, 35000); // 35 seconds (more realistic interval)
+
+    return () => clearInterval(interval);
+  }, [showCommunityModal]);
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
       case 'easy':
@@ -376,7 +507,15 @@ export default function ChallengesScreen() {
         )}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Available Challenges</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Available Challenges</Text>
+            <TouchableOpacity 
+              style={styles.communityButton}
+              onPress={() => setShowCommunityModal(true)}
+              activeOpacity={0.7}>
+              <Users size={22} color="#667EEA" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
           {challenges.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>No challenges available at the moment.</Text>
@@ -462,6 +601,110 @@ export default function ChallengesScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Community Activity Modal */}
+      <Modal visible={showCommunityModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>👥 Community Activity</Text>
+              <TouchableOpacity onPress={() => setShowCommunityModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll}>
+              
+              {/* Motivational Header */}
+              <View style={styles.communityHeader}>
+                <Text style={styles.communityHeaderTitle}>🎉 You're Not Alone!</Text>
+                <Text style={styles.communityHeaderText}>
+                  Join thousands of users on their recovery journey
+                </Text>
+              </View>
+
+              {/* Today's Stats */}
+              <View style={styles.communitySection}>
+                <Text style={styles.communitySectionTitle}>📊 Today's Activity</Text>
+                <View style={styles.communityStatsGrid}>
+                  <View style={styles.communityStatCard}>
+                    <Text style={styles.communityStatValue}>{communityData.totalChallenges.toLocaleString()}</Text>
+                    <Text style={styles.communityStatLabel}>Challenges Completed</Text>
+                  </View>
+                  <View style={styles.communityStatCard}>
+                    <Text style={styles.communityStatValue}>{communityData.totalPoints.toLocaleString()}</Text>
+                    <Text style={styles.communityStatLabel}>Points Earned</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Popular Challenges */}
+              <View style={styles.communitySection}>
+                <Text style={styles.communitySectionTitle}>🔥 Popular Today</Text>
+                <View style={styles.popularChallengeCard}>
+                  <View style={styles.popularChallengeHeader}>
+                    <Text style={styles.popularChallengeName}>Morning Meditation</Text>
+                    <View style={styles.popularChallengeBadge}>
+                      <Text style={styles.popularChallengeCount}>156 users</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.popularChallengeDesc}>Most completed challenge today</Text>
+                </View>
+                <View style={styles.popularChallengeCard}>
+                  <View style={styles.popularChallengeHeader}>
+                    <Text style={styles.popularChallengeName}>Exercise</Text>
+                    <View style={styles.popularChallengeBadge}>
+                      <Text style={styles.popularChallengeCount}>142 users</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.popularChallengeDesc}>Trending this week</Text>
+                </View>
+                <View style={styles.popularChallengeCard}>
+                  <View style={styles.popularChallengeHeader}>
+                    <Text style={styles.popularChallengeName}>Journal Entry</Text>
+                    <View style={styles.popularChallengeBadge}>
+                      <Text style={styles.popularChallengeCount}>128 users</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.popularChallengeDesc}>Great for reflection</Text>
+                </View>
+              </View>
+
+              {/* Recent Activity Feed */}
+              <View style={styles.communitySection}>
+                <Text style={styles.communitySectionTitle}>⚡ Recent Activity</Text>
+                <View style={styles.activityFeed}>
+                  {communityData.recentActivity.map((activity) => (
+                    <View key={activity.id} style={styles.activityItem}>
+                      <View style={[styles.activityAvatar, { backgroundColor: activity.color }]}>
+                        <Text style={styles.activityAvatarText}>{activity.initial}</Text>
+                      </View>
+                      <View style={styles.activityContent}>
+                        <Text style={styles.activityText}>
+                          <Text style={styles.activityUser}>{activity.name}</Text> completed{' '}
+                          <Text style={styles.activityChallenge}>{activity.challenge}</Text>
+                        </Text>
+                        <View style={styles.activityFooter}>
+                          <Text style={styles.activityPoints}>+{activity.points} points</Text>
+                          <Text style={styles.activityTime}>{activity.time}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Motivational Message */}
+              <View style={styles.communityMotivation}>
+                <Text style={styles.communityMotivationIcon}>💪</Text>
+                <Text style={styles.communityMotivationText}>
+                  You're part of an amazing community! Complete challenges to inspire others.
+                </Text>
+              </View>
+
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Guide Modal */}
       <Modal visible={showGuideModal} animationType="slide" transparent>
@@ -907,12 +1150,30 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
+  },
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#2C3E50',
-    marginBottom: 16,
-    marginTop: 8,
+  },
+  communityButton: {
+    backgroundColor: '#F0F4FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#667EEA',
+    shadowColor: '#667EEA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
   challengeCard: {
     backgroundColor: '#FFFFFF',
@@ -1459,5 +1720,161 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  communityHeader: {
+    backgroundColor: '#667EEA',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  communityHeaderTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  communityHeaderText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    textAlign: 'center',
+  },
+  communitySection: {
+    marginBottom: 24,
+  },
+  communitySectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 12,
+  },
+  communityStatsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  communityStatCard: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  communityStatValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#667EEA',
+    marginBottom: 4,
+  },
+  communityStatLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    textAlign: 'center',
+  },
+  popularChallengeCard: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  popularChallengeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  popularChallengeName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C3E50',
+    flex: 1,
+  },
+  popularChallengeBadge: {
+    backgroundColor: '#667EEA',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  popularChallengeCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  popularChallengeDesc: {
+    fontSize: 13,
+    color: '#7F8C8D',
+  },
+  activityFeed: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 12,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  activityAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#667EEA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  activityAvatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityText: {
+    fontSize: 14,
+    color: '#2C3E50',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  activityUser: {
+    fontWeight: '600',
+    color: '#667EEA',
+  },
+  activityChallenge: {
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  activityFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  activityPoints: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#27AE60',
+    marginRight: 12,
+  },
+  activityTime: {
+    fontSize: 12,
+    color: '#95A5A6',
+  },
+  communityMotivation: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  communityMotivationIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  communityMotivationText: {
+    fontSize: 15,
+    color: '#27AE60',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });

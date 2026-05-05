@@ -65,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user_id: response.profile.user_id,
         username: response.user.username,
         avatar_level: response.profile.level_id || 1, // Use level_id as avatar_level
+        avatar_type: response.profile.avatar_type || 'boy', // Add avatar_type
         is_anonymous: response.user.is_anonymous,
         total_points: response.profile.total_points || 0,
         current_streak: response.profile.current_streak || 0,
@@ -78,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] fetchProfile: Setting profile state with:', {
         total_points: profileData.total_points,
         level_id: profileData.level_id,
+        avatar_type: profileData.avatar_type,
       });
       
       setProfile(profileData);

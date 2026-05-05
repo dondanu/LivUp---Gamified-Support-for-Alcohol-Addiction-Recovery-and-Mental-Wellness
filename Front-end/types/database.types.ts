@@ -3,6 +3,7 @@ export interface Profile {
   user_id?: string;
   username: string | null;
   avatar_level: number;
+  avatar_type?: string; // Avatar type (boy, girl, man, woman, basic)
   is_anonymous: boolean;
   total_points: number;
   current_streak: number;

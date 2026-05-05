@@ -25,6 +25,7 @@ import {
   X,
   Shield,
   Sparkles,
+  UserCircle2,
 } from 'lucide-react-native';
 import { EmergencyContact, HealthyAlternative, UserBadge } from '@/types/database.types';
 
@@ -37,16 +38,27 @@ export default function ProfileScreen() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [showAlternativesModal, setShowAlternativesModal] = useState(false);
   const [showBadgesModal, setShowBadgesModal] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [alternatives, setAlternatives] = useState<HealthyAlternative[]>([]);
   const [badges, setBadges] = useState<UserBadge[]>([]);
   const [newContactName, setNewContactName] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactRelationship, setNewContactRelationship] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(profile?.avatar_type || 'boy');
 
   useEffect(() => {
     loadProfileData();
   }, [profile?.id]); // Only reload when user changes, not on every profile update
+
+  // Update selectedAvatar whenever profile.avatar_type changes
+  useEffect(() => {
+    console.log('[Profile] Avatar type from profile:', profile?.avatar_type);
+    if (profile?.avatar_type) {
+      console.log('[Profile] Setting selectedAvatar to:', profile.avatar_type);
+      setSelectedAvatar(profile.avatar_type);
+    }
+  }, [profile?.avatar_type]);
 
   // Refresh profile when screen comes into focus
   useFocusEffect(
@@ -137,6 +149,38 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleUpdateAvatar = async (avatarType: string) => {
+    if (!profile?.id) return;
+
+    console.log('[Profile] Updating avatar to:', avatarType);
+    setLoading(true);
+    try {
+      const response = await api.updateAvatar(avatarType);
+      console.log('[Profile] Avatar update response:', response);
+      setSelectedAvatar(avatarType);
+      await refreshProfile();
+      setShowAvatarModal(false);
+      Alert.alert('Success', 'Avatar updated successfully');
+    } catch (error: any) {
+      console.error('[Profile] Error updating avatar:', error);
+      Alert.alert('Error', error.message || 'Failed to update avatar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAvatarIcon = (avatarType: string) => {
+    // Return appropriate emoji or icon based on avatar type
+    const avatarMap: { [key: string]: string } = {
+      boy: '👦',
+      girl: '👧',
+      man: '👨',
+      woman: '👩',
+      basic: '👤',
+    };
+    return avatarMap[avatarType] || '👤';
+  };
+
   const handleSignOut = async () => {
     console.log('[Profile] handleSignOut: Sign out button pressed');
     const message = isAnonymous 
@@ -188,17 +232,23 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.header} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
         <View style={styles.headerContent}>
-          <View style={styles.avatarContainer}>
+          <TouchableOpacity 
+            style={styles.avatarContainer}
+            onPress={() => setShowAvatarModal(true)}
+          >
             <LinearGradient colors={['#F093FB', '#F5576C']} style={styles.avatar} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
-              <User size={48} color="#FFFFFF" />
+              <Text style={styles.avatarEmoji}>{getAvatarIcon(selectedAvatar)}</Text>
             </LinearGradient>
+            <View style={styles.avatarEditBadge}>
+              <Edit size={12} color="#FFFFFF" />
+            </View>
             <View style={styles.avatarBadge}>
               <Sparkles size={16} color="#FFD700" />
               <Text style={styles.avatarBadgeText}>
                 {getLevelName(profile?.level_id || 1)}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           <View style={styles.profileInfo}>
             {editMode ? (
@@ -439,6 +489,55 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showAvatarModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choose Your Avatar</Text>
+              <TouchableOpacity onPress={() => setShowAvatarModal(false)}>
+                <X size={24} color="#2C3E50" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll}>
+              <View style={styles.avatarGrid}>
+                {[
+                  { type: 'boy', emoji: '👦', label: 'Boy' },
+                  { type: 'girl', emoji: '👧', label: 'Girl' },
+                  { type: 'man', emoji: '👨', label: 'Man' },
+                  { type: 'woman', emoji: '👩', label: 'Woman' },
+                  { type: 'basic', emoji: '👤', label: 'Basic' },
+                ].map((avatar) => (
+                  <TouchableOpacity
+                    key={avatar.type}
+                    style={[
+                      styles.avatarOption,
+                      selectedAvatar === avatar.type && styles.avatarOptionSelected,
+                    ]}
+                    onPress={() => handleUpdateAvatar(avatar.type)}
+                    disabled={loading}
+                  >
+                    <Text style={styles.avatarOptionEmoji}>{avatar.emoji}</Text>
+                    <Text style={styles.avatarOptionLabel}>{avatar.label}</Text>
+                    {selectedAvatar === avatar.type && (
+                      <View style={styles.avatarSelectedBadge}>
+                        <Text style={styles.avatarSelectedText}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {loading && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#667EEA" />
+                  <Text style={styles.loadingText}>Updating avatar...</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -468,10 +567,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarEmoji: {
+    fontSize: 48,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#667EEA',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   avatarBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: -12,
+    right: -7,
     backgroundColor: '#2C3E50',
     borderRadius: 12,
     paddingHorizontal: 8,
@@ -768,5 +883,60 @@ const styles = StyleSheet.create({
   alternativeDuration: {
     fontSize: 12,
     color: '#95A5A6',
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingBottom: 24,
+  },
+  avatarOption: {
+    width: '48%',
+    backgroundColor: '#F5F7FA',
+    padding: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    position: 'relative',
+  },
+  avatarOptionSelected: {
+    borderColor: '#667EEA',
+    backgroundColor: '#EEF2FF',
+  },
+  avatarOptionEmoji: {
+    fontSize: 64,
+    marginBottom: 8,
+  },
+  avatarOptionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  avatarSelectedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#667EEA',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarSelectedText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#7F8C8D',
   },
 });

@@ -68,9 +68,10 @@ const updateUserPoints = async (req, res) => {
 
     const newLevel = determineLevel(newTotalPoints, levels || []);
 
+    // Don't override user's chosen avatar - only update points and level
     await query(
-      'UPDATE user_profiles SET total_points = ?, level_id = ?, avatar_type = ?, updated_at = ? WHERE user_id = ?',
-      [newTotalPoints, newLevel.id, newLevel.avatar_unlock, new Date().toISOString(), userId]
+      'UPDATE user_profiles SET total_points = ?, level_id = ?, updated_at = ? WHERE user_id = ?',
+      [newTotalPoints, newLevel.id, new Date().toISOString(), userId]
     );
 
     const { data: updatedProfile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
@@ -237,6 +238,8 @@ const updateAvatar = async (req, res) => {
     const userId = req.user.userId;
     const { avatarType } = req.body;
 
+    console.log('[updateAvatar] Request received:', { userId, avatarType });
+
     // Input validation
     if (!avatarType || typeof avatarType !== 'string') {
       return res.status(400).json({ error: 'Avatar type is required and must be a string' });
@@ -246,15 +249,22 @@ const updateAvatar = async (req, res) => {
       return res.status(400).json({ error: 'Avatar type must be 50 characters or less' });
     }
 
-    await query('UPDATE user_profiles SET avatar_type = ?, updated_at = ? WHERE user_id = ?', [
+    console.log('[updateAvatar] Updating database...');
+    // Use MySQL datetime format instead of ISO
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const updateResult = await query('UPDATE user_profiles SET avatar_type = ?, updated_at = ? WHERE user_id = ?', [
       avatarType,
-      new Date().toISOString(),
+      now,
       userId,
     ]);
+    console.log('[updateAvatar] Update result:', updateResult);
+
     const { data: updatedProfile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+    console.log('[updateAvatar] Updated profile from DB:', updatedProfile);
 
     res.status(200).json({ message: 'Avatar updated successfully', profile: updatedProfile });
   } catch (error) {
+    console.error('[updateAvatar] Error:', error);
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 };

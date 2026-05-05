@@ -183,10 +183,10 @@ const completeTask = async (req, res) => {
     const newLevel = determineLevel(newTotalPoints, levels || []);
 
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    await query('UPDATE user_profiles SET total_points = ?, level_id = ?, avatar_type = ?, updated_at = ? WHERE user_id = ?', [
+    // Don't override user's chosen avatar - only update points and level
+    await query('UPDATE user_profiles SET total_points = ?, level_id = ?, updated_at = ? WHERE user_id = ?', [
       newTotalPoints,
       newLevel.id,
-      newLevel.avatar_unlock,
       now,
       userId,
     ]);
