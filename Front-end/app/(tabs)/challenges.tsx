@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -31,6 +32,12 @@ export default function ChallengesScreen() {
   const [showMilestonePrompt, setShowMilestonePrompt] = useState(false);
   const [milestoneType, setMilestoneType] = useState('');
   const [milestoneData, setMilestoneData] = useState<any>(null);
+
+  // Stats modal states
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  const [showInProgressModal, setShowInProgressModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   useEffect(() => {
     loadChallenges();
@@ -240,8 +247,10 @@ export default function ChallengesScreen() {
     );
   };
 
-  const completedCount = userChallenges.filter((uc) => uc.status === 'completed').length;
-  const inProgressCount = userChallenges.filter((uc) => uc.status === 'in_progress').length;
+  const completedChallenges = userChallenges.filter((uc) => uc.status === 'completed');
+  const inProgressChallenges = userChallenges.filter((uc) => uc.status === 'in_progress');
+  const completedCount = completedChallenges.length;
+  const inProgressCount = inProgressChallenges.length;
 
   if (loading) {
     return (
@@ -254,8 +263,18 @@ export default function ChallengesScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#F093FB', '#F5576C']} style={styles.header} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
-        <Text style={styles.headerTitle}>Daily Challenges</Text>
-        <Text style={styles.headerSubtitle}>Complete tasks to earn points and level up</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Daily Challenges</Text>
+            <Text style={styles.headerSubtitle}>Complete tasks to earn points and level up</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.guideButton}
+            onPress={() => setShowGuideModal(true)}
+            activeOpacity={0.8}>
+            <Text style={styles.guideButtonText}>?</Text>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       <ScrollView
@@ -263,23 +282,32 @@ export default function ChallengesScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => setShowCompletedModal(true)}
+            activeOpacity={0.7}>
             <LinearGradient colors={['#4ECDC4', '#44A08D']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
               <CheckCircle size={28} color="#FFFFFF" />
               <Text style={styles.statValue}>{completedCount}</Text>
               <Text style={styles.statLabel}>Completed</Text>
             </LinearGradient>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => setShowInProgressModal(true)}
+            activeOpacity={0.7}>
             <LinearGradient colors={['#F39C12', '#E67E22']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
               <Zap size={28} color="#FFFFFF" />
               <Text style={styles.statValue}>{inProgressCount}</Text>
               <Text style={styles.statLabel}>In Progress</Text>
             </LinearGradient>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => setShowPointsModal(true)}
+            activeOpacity={0.7}>
             <LinearGradient colors={['#667EEA', '#764BA2']} style={styles.statGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
               <Trophy size={28} color="#FFFFFF" />
               <Text style={styles.statValue}>
@@ -289,7 +317,7 @@ export default function ChallengesScreen() {
               </Text>
               <Text style={styles.statLabel}>Total Points</Text>
             </LinearGradient>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {userChallenges.filter((uc) => uc.status === 'in_progress').length > 0 && (
@@ -435,6 +463,194 @@ export default function ChallengesScreen() {
         </View>
       </ScrollView>
 
+      {/* Guide Modal */}
+      <Modal visible={showGuideModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.guideModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📖 Challenges Guide</Text>
+              <TouchableOpacity onPress={() => setShowGuideModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={true}>
+              
+              {/* Welcome Section */}
+              <View style={styles.guideSection}>
+                <Text style={styles.guideSectionTitle}>👋 Welcome!</Text>
+                <Text style={styles.guideSectionText}>
+                  Complete daily challenges to earn points, level up, and unlock achievements on your recovery journey!
+                </Text>
+              </View>
+
+              {/* How to Earn Points */}
+              <View style={styles.guideSection}>
+                <Text style={styles.guideSectionTitle}>💰 How to Earn Points</Text>
+                <View style={styles.guideStep}>
+                  <Text style={styles.guideStepNumber}>1</Text>
+                  <View style={styles.guideStepContent}>
+                    <Text style={styles.guideStepTitle}>Choose a Challenge</Text>
+                    <Text style={styles.guideStepText}>Browse available challenges below</Text>
+                  </View>
+                </View>
+                <View style={styles.guideStep}>
+                  <Text style={styles.guideStepNumber}>2</Text>
+                  <View style={styles.guideStepContent}>
+                    <Text style={styles.guideStepTitle}>Tap to View Details</Text>
+                    <Text style={styles.guideStepText}>See full description and requirements</Text>
+                  </View>
+                </View>
+                <View style={styles.guideStep}>
+                  <Text style={styles.guideStepNumber}>3</Text>
+                  <View style={styles.guideStepContent}>
+                    <Text style={styles.guideStepTitle}>Complete the Task</Text>
+                    <Text style={styles.guideStepText}>Follow instructions and finish the challenge</Text>
+                  </View>
+                </View>
+                <View style={styles.guideStep}>
+                  <Text style={styles.guideStepNumber}>4</Text>
+                  <View style={styles.guideStepContent}>
+                    <Text style={styles.guideStepTitle}>Mark as Complete</Text>
+                    <Text style={styles.guideStepText}>Tap "Complete" button to earn points!</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Challenge Types */}
+              <View style={styles.guideSection}>
+                <Text style={styles.guideSectionTitle}>🎯 Challenge Types</Text>
+                <View style={styles.guideChallengeType}>
+                  <View style={[styles.guideDifficultyBadge, { backgroundColor: '#4ECDC4' }]}>
+                    <Text style={styles.guideDifficultyText}>Easy</Text>
+                  </View>
+                  <Text style={styles.guideChallengeTypeText}>10-20 points • 5-30 minutes</Text>
+                </View>
+                <View style={styles.guideChallengeType}>
+                  <View style={[styles.guideDifficultyBadge, { backgroundColor: '#F39C12' }]}>
+                    <Text style={styles.guideDifficultyText}>Medium</Text>
+                  </View>
+                  <Text style={styles.guideChallengeTypeText}>15-40 points • 30-60 minutes</Text>
+                </View>
+                <View style={styles.guideChallengeType}>
+                  <View style={[styles.guideDifficultyBadge, { backgroundColor: '#E74C3C' }]}>
+                    <Text style={styles.guideDifficultyText}>Hard</Text>
+                  </View>
+                  <Text style={styles.guideChallengeTypeText}>45-100 points • 1+ hours</Text>
+                </View>
+              </View>
+
+              {/* Categories */}
+              <View style={styles.guideSection}>
+                <Text style={styles.guideSectionTitle}>📂 Categories</Text>
+                <View style={styles.guideCategoryList}>
+                  <View style={styles.guideCategoryItem}>
+                    <Text style={styles.guideCategoryIcon}>🧘</Text>
+                    <Text style={styles.guideCategoryName}>Wellness</Text>
+                    <Text style={styles.guideCategoryCount}>9 challenges</Text>
+                  </View>
+                  <View style={styles.guideCategoryItem}>
+                    <Text style={styles.guideCategoryIcon}>💪</Text>
+                    <Text style={styles.guideCategoryName}>Health</Text>
+                    <Text style={styles.guideCategoryCount}>6 challenges</Text>
+                  </View>
+                  <View style={styles.guideCategoryItem}>
+                    <Text style={styles.guideCategoryIcon}>📝</Text>
+                    <Text style={styles.guideCategoryName}>Reflection</Text>
+                    <Text style={styles.guideCategoryCount}>3 challenges</Text>
+                  </View>
+                  <View style={styles.guideCategoryItem}>
+                    <Text style={styles.guideCategoryIcon}>📚</Text>
+                    <Text style={styles.guideCategoryName}>Education</Text>
+                    <Text style={styles.guideCategoryCount}>3 challenges</Text>
+                  </View>
+                  <View style={styles.guideCategoryItem}>
+                    <Text style={styles.guideCategoryIcon}>👥</Text>
+                    <Text style={styles.guideCategoryName}>Social</Text>
+                    <Text style={styles.guideCategoryCount}>4 challenges</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Stats Boxes */}
+              <View style={styles.guideSection}>
+                <Text style={styles.guideSectionTitle}>📊 Stats Boxes</Text>
+                <Text style={styles.guideSectionText}>Tap on the colored boxes at the top to see:</Text>
+                <View style={styles.guideStatsList}>
+                  <View style={styles.guideStatsItem}>
+                    <View style={[styles.guideStatsIcon, { backgroundColor: '#4ECDC4' }]}>
+                      <Text style={styles.guideStatsIconText}>✓</Text>
+                    </View>
+                    <Text style={styles.guideStatsText}>Completed challenges list</Text>
+                  </View>
+                  <View style={styles.guideStatsItem}>
+                    <View style={[styles.guideStatsIcon, { backgroundColor: '#F39C12' }]}>
+                      <Text style={styles.guideStatsIconText}>⚡</Text>
+                    </View>
+                    <Text style={styles.guideStatsText}>In-progress challenges</Text>
+                  </View>
+                  <View style={styles.guideStatsItem}>
+                    <View style={[styles.guideStatsIcon, { backgroundColor: '#667EEA' }]}>
+                      <Text style={styles.guideStatsIconText}>🏆</Text>
+                    </View>
+                    <Text style={styles.guideStatsText}>Points breakdown & level info</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Tips */}
+              <View style={styles.guideSection}>
+                <Text style={styles.guideSectionTitle}>💡 Pro Tips</Text>
+                <View style={styles.guideTip}>
+                  <Text style={styles.guideTipIcon}>✨</Text>
+                  <Text style={styles.guideTipText}>Start with easy challenges to build momentum</Text>
+                </View>
+                <View style={styles.guideTip}>
+                  <Text style={styles.guideTipIcon}>🔥</Text>
+                  <Text style={styles.guideTipText}>Complete 2-3 challenges daily for steady progress</Text>
+                </View>
+                <View style={styles.guideTip}>
+                  <Text style={styles.guideTipIcon}>🎯</Text>
+                  <Text style={styles.guideTipText}>Mix different categories for balanced growth</Text>
+                </View>
+                <View style={styles.guideTip}>
+                  <Text style={styles.guideTipIcon}>📅</Text>
+                  <Text style={styles.guideTipText}>Challenges reset daily - come back tomorrow!</Text>
+                </View>
+              </View>
+
+              {/* Quick Stats */}
+              <View style={styles.guideStatsCard}>
+                <Text style={styles.guideStatsCardTitle}>📈 Quick Stats</Text>
+                <View style={styles.guideStatsRow}>
+                  <Text style={styles.guideStatsLabel}>Total Challenges:</Text>
+                  <Text style={styles.guideStatsValue}>25</Text>
+                </View>
+                <View style={styles.guideStatsRow}>
+                  <Text style={styles.guideStatsLabel}>Total Points Available:</Text>
+                  <Text style={styles.guideStatsValue}>505</Text>
+                </View>
+                <View style={styles.guideStatsRow}>
+                  <Text style={styles.guideStatsLabel}>Your Progress:</Text>
+                  <Text style={styles.guideStatsValue}>{completedCount} completed</Text>
+                </View>
+              </View>
+
+              <View style={styles.guideFooter}>
+                <Text style={styles.guideFooterText}>
+                  🎉 Start completing challenges now to earn points and level up!
+                </Text>
+                <TouchableOpacity 
+                  style={styles.guideCloseButton}
+                  onPress={() => setShowGuideModal(false)}>
+                  <Text style={styles.guideCloseButtonText}>Got it!</Text>
+                </TouchableOpacity>
+              </View>
+
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Milestone Prompt Modal */}
       <MilestonePrompt
         visible={showMilestonePrompt}
@@ -442,6 +658,160 @@ export default function ChallengesScreen() {
         milestoneData={milestoneData}
         onDismiss={handleDismissMilestone}
       />
+
+      {/* Completed Challenges Modal */}
+      <Modal visible={showCompletedModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>✅ Completed Challenges</Text>
+              <TouchableOpacity onPress={() => setShowCompletedModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll}>
+              {completedChallenges.length === 0 ? (
+                <Text style={styles.emptyModalText}>No challenges completed yet. Start completing challenges to earn points!</Text>
+              ) : (
+                completedChallenges.map((uc, index) => (
+                  <View key={uc.id || index} style={styles.modalChallengeCard}>
+                    <View style={styles.modalChallengeHeader}>
+                      <CheckCircle size={20} color="#27AE60" />
+                      <Text style={styles.modalChallengeTitle}>
+                        {uc.challenges?.title || uc.challenges?.task_name || 'Challenge'}
+                      </Text>
+                    </View>
+                    <Text style={styles.modalChallengeDesc}>
+                      {uc.challenges?.description || 'No description'}
+                    </Text>
+                    <View style={styles.modalChallengeFooter}>
+                      <View style={styles.modalPointsBadge}>
+                        <Star size={14} color="#FFD700" />
+                        <Text style={styles.modalPointsText}>
+                          +{uc.challenges?.points_reward || 0} points
+                        </Text>
+                      </View>
+                      <Text style={styles.modalDifficultyText}>
+                        {uc.challenges?.difficulty || 'Easy'}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+              <View style={styles.modalSummary}>
+                <Text style={styles.modalSummaryText}>
+                  Total: {completedChallenges.length} challenges completed
+                </Text>
+                <Text style={styles.modalSummaryPoints}>
+                  {completedChallenges.reduce((sum, uc) => sum + (uc.challenges?.points_reward || 0), 0)} points earned
+                </Text>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* In Progress Challenges Modal */}
+      <Modal visible={showInProgressModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>⚡ In Progress</Text>
+              <TouchableOpacity onPress={() => setShowInProgressModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll}>
+              {inProgressChallenges.length === 0 ? (
+                <Text style={styles.emptyModalText}>No challenges in progress. Start a challenge to begin!</Text>
+              ) : (
+                inProgressChallenges.map((uc, index) => (
+                  <View key={uc.id || index} style={styles.modalChallengeCard}>
+                    <View style={styles.modalChallengeHeader}>
+                      <Zap size={20} color="#F39C12" />
+                      <Text style={styles.modalChallengeTitle}>
+                        {uc.challenges?.title || uc.challenges?.task_name || 'Challenge'}
+                      </Text>
+                    </View>
+                    <Text style={styles.modalChallengeDesc}>
+                      {uc.challenges?.description || 'No description'}
+                    </Text>
+                    <View style={styles.modalChallengeFooter}>
+                      <View style={styles.modalPointsBadge}>
+                        <Star size={14} color="#FFD700" />
+                        <Text style={styles.modalPointsText}>
+                          {uc.challenges?.points_reward || 0} points
+                        </Text>
+                      </View>
+                      <Text style={styles.modalDifficultyText}>
+                        {uc.challenges?.difficulty || 'Easy'}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Total Points Breakdown Modal */}
+      <Modal visible={showPointsModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>🏆 Points Breakdown</Text>
+              <TouchableOpacity onPress={() => setShowPointsModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll}>
+              <View style={styles.pointsBreakdownCard}>
+                <Text style={styles.pointsBreakdownTitle}>Total Points</Text>
+                <Text style={styles.pointsBreakdownValue}>
+                  {profile?.total_points || todayPoints || 0}
+                </Text>
+              </View>
+
+              <View style={styles.pointsSection}>
+                <Text style={styles.pointsSectionTitle}>📋 From Challenges</Text>
+                <View style={styles.pointsRow}>
+                  <Text style={styles.pointsLabel}>Completed Today:</Text>
+                  <Text style={styles.pointsValue}>{completedCount} challenges</Text>
+                </View>
+                <View style={styles.pointsRow}>
+                  <Text style={styles.pointsLabel}>Points Earned:</Text>
+                  <Text style={styles.pointsValue}>
+                    {completedChallenges.reduce((sum, uc) => sum + (uc.challenges?.points_reward || 0), 0)} points
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.pointsSection}>
+                <Text style={styles.pointsSectionTitle}>🏅 Current Level</Text>
+                <View style={styles.pointsRow}>
+                  <Text style={styles.pointsLabel}>Level:</Text>
+                  <Text style={styles.pointsValue}>
+                    {profile?.level_id || 1} - {profile?.level || 'Beginner'}
+                  </Text>
+                </View>
+                <View style={styles.pointsRow}>
+                  <Text style={styles.pointsLabel}>Progress:</Text>
+                  <Text style={styles.pointsValue}>
+                    {profile?.total_points || 0} / {Math.ceil(((profile?.total_points || 0) / 1000) + 1) * 1000} points
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.pointsTip}>
+                <Text style={styles.pointsTipText}>
+                  💡 Complete more challenges to earn points and level up!
+                </Text>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -462,6 +832,14 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 24,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -472,6 +850,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     opacity: 0.9,
     marginTop: 4,
+  },
+  guideButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  guideButtonText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   content: {
     flex: 1,
@@ -704,5 +1096,368 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#7F8C8D',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  modalClose: {
+    fontSize: 28,
+    color: '#7F8C8D',
+    fontWeight: '300',
+  },
+  modalScroll: {
+    flex: 1,
+    marginBottom: 20,
+  },
+  emptyModalText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    paddingVertical: 40,
+    lineHeight: 24,
+  },
+  modalChallengeCard: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  modalChallengeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalChallengeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginLeft: 8,
+    flex: 1,
+  },
+  modalChallengeDesc: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  modalChallengeFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalPointsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF9E6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  modalPointsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F39C12',
+    marginLeft: 4,
+  },
+  modalDifficultyText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#667EEA',
+    textTransform: 'uppercase',
+  },
+  modalSummary: {
+    backgroundColor: '#667EEA',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 10,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  modalSummaryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  modalSummaryPoints: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFD700',
+  },
+  pointsBreakdownCard: {
+    backgroundColor: '#667EEA',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  pointsBreakdownTitle: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    marginBottom: 8,
+  },
+  pointsBreakdownValue: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  pointsSection: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  pointsSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 12,
+  },
+  pointsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  pointsLabel: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  pointsValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  pointsTip: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+  },
+  pointsTipText: {
+    fontSize: 14,
+    color: '#27AE60',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  guideModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    maxHeight: '90%',
+    minHeight: '70%',
+  },
+  guideSection: {
+    marginBottom: 24,
+  },
+  guideSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 12,
+  },
+  guideSectionText: {
+    fontSize: 15,
+    color: '#7F8C8D',
+    lineHeight: 22,
+  },
+  guideStep: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  guideStepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#667EEA',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    lineHeight: 32,
+    marginRight: 12,
+  },
+  guideStepContent: {
+    flex: 1,
+  },
+  guideStepTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  guideStepText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    lineHeight: 20,
+  },
+  guideChallengeType: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  guideDifficultyBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 12,
+    minWidth: 80,
+  },
+  guideDifficultyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  guideChallengeTypeText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  guideCategoryList: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 12,
+  },
+  guideCategoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  guideCategoryIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  guideCategoryName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  guideCategoryCount: {
+    fontSize: 13,
+    color: '#7F8C8D',
+  },
+  guideStatsList: {
+    marginTop: 12,
+  },
+  guideStatsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  guideStatsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  guideStatsIconText: {
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  guideStatsText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2C3E50',
+  },
+  guideTip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F5F7FA',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  guideTipIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  guideTipText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2C3E50',
+    lineHeight: 20,
+  },
+  guideStatsCard: {
+    backgroundColor: '#667EEA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  guideStatsCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  guideStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  guideStatsLabel: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
+  guideStatsValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFD700',
+  },
+  guideFooter: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  guideFooterText: {
+    fontSize: 15,
+    color: '#2C3E50',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  guideCloseButton: {
+    backgroundColor: '#667EEA',
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 25,
+  },
+  guideCloseButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });
