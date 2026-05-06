@@ -37,6 +37,15 @@ export * from './health';
 // Insights API
 export * from './insights';
 
-// Re-export token manager for convenience
-export { tokenManager } from './client';
+// Profile Customization API
+export * from './profileCustomization';
+
+// Milestones API
+export * from './milestones';
+
+// Journal API
+export * from './journal';
+
+// NOTE: tokenManager is NOT exported here to avoid circular dependencies
+// Import it directly from './client' where needed
 

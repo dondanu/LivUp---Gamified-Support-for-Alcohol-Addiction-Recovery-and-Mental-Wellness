@@ -302,6 +302,40 @@ async function createTables(connection) {
     )
   `);
 
+  // User milestones table (for personal milestones feature)
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS user_milestones (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      user_id INT NOT NULL,
+      title VARCHAR(200) NOT NULL,
+      milestone_date DATE NOT NULL,
+      type VARCHAR(20) DEFAULT 'custom',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      INDEX idx_user_milestones_user_id (user_id),
+      INDEX idx_user_milestones_date (milestone_date),
+      CHECK (type IN ('sobriety', 'custom'))
+    )
+  `);
+
+  // Journal entries table (for personal journal feature)
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS journal_entries (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      user_id INT NOT NULL,
+      type ENUM('note', 'gratitude', 'reason', 'mantra') NOT NULL,
+      content TEXT NOT NULL,
+      entry_date DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      INDEX idx_journal_user_id (user_id),
+      INDEX idx_journal_date (entry_date),
+      INDEX idx_journal_type (type)
+    )
+  `);
+
   console.log('✅ All tables created successfully');
 }
 

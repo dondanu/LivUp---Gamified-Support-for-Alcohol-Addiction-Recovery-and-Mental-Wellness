@@ -35,6 +35,14 @@ import DeepBreathingChallenge from './app/challenges/deep-breathing';
 import NotFoundScreen from './app/+not-found';
 import IndexScreen from './app/index';
 
+// Profile Enhancement Screens
+import CustomizeProfileScreen from './app/customize-profile';
+import AchievementGalleryScreen from './app/achievement-gallery';
+import PersonalMilestonesScreen from './app/personal-milestones';
+import PersonalJournalScreen from './app/personal-journal';
+import SettingsScreen from './app/settings-screen';
+import SocialSharingScreen from './app/social-sharing';
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -185,6 +193,37 @@ function RootNavigator() {
           <Stack.Screen 
             name="DeepBreathingChallenge" 
             component={DeepBreathingChallenge}
+            options={{ headerShown: false }}
+          />
+          {/* Profile Enhancement Screens */}
+          <Stack.Screen 
+            name="CustomizeProfile" 
+            component={CustomizeProfileScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="AchievementGallery" 
+            component={AchievementGalleryScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="PersonalMilestones" 
+            component={PersonalMilestonesScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="PersonalJournal" 
+            component={PersonalJournalScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="SettingsScreen" 
+            component={SettingsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="SocialSharing" 
+            component={SocialSharingScreen}
             options={{ headerShown: false }}
           />
         </>

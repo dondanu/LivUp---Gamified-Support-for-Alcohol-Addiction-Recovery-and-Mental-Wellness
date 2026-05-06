@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -181,33 +182,39 @@ export default function ProfileScreen() {
     return avatarMap[avatarType] || '👤';
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     console.log('[Profile] handleSignOut: Sign out button pressed');
     const message = isAnonymous 
       ? 'Exit anonymous mode? Your progress will be lost unless you create an account.'
       : 'Are you sure you want to sign out?';
     
-    Alert.alert('Sign Out', message, [
-      { 
-        text: 'Cancel', 
-        style: 'cancel',
-        onPress: () => console.log('[Profile] handleSignOut: User cancelled sign out')
-      },
-      {
-        text: isAnonymous ? 'Exit' : 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          console.log('[Profile] handleSignOut: User confirmed sign out');
-          try {
-            console.log('[Profile] handleSignOut: Calling AuthContext signOut - navigation will be handled automatically');
-            await signOut();
-            console.log('[Profile] handleSignOut: Sign out completed - AuthContext should handle navigation to Intro screen');
-          } catch (error) {
-            console.error('[Profile] handleSignOut: Error during sign out:', error);
-          }
+    // Use InteractionManager to ensure Alert shows properly
+    InteractionManager.runAfterInteractions(() => {
+      Alert.alert('Sign Out', message, [
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => console.log('[Profile] handleSignOut: User cancelled sign out')
         },
-      },
-    ]);
+        {
+          text: isAnonymous ? 'Exit' : 'Sign Out',
+          style: 'destructive',
+          onPress: () => {
+            console.log('[Profile] handleSignOut: User confirmed sign out');
+            // Add delay to ensure Alert is dismissed before navigation
+            setTimeout(async () => {
+              try {
+                console.log('[Profile] handleSignOut: Calling AuthContext signOut');
+                await signOut();
+                console.log('[Profile] handleSignOut: Sign out completed');
+              } catch (error) {
+                console.error('[Profile] handleSignOut: Error during sign out:', error);
+              }
+            }, 150);
+          },
+        },
+      ]);
+    });
   };
 
   const getLevelProgress = () => {
@@ -311,11 +318,35 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.menuCard} onPress={() => setShowBadgesModal(true)}>
+        <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('CustomizeProfile' as never)}>
+          <View style={styles.menuIconContainer}>
+            <Sparkles size={24} color="#667EEA" />
+          </View>
+          <Text style={styles.menuText}>Customize Profile</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('AchievementGallery' as never)}>
           <View style={styles.menuIconContainer}>
             <Award size={24} color="#4ECDC4" />
           </View>
-          <Text style={styles.menuText}>My Badges</Text>
+          <Text style={styles.menuText}>Achievement Gallery</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('PersonalMilestones' as never)}>
+          <View style={styles.menuIconContainer}>
+            <UserCircle2 size={24} color="#F093FB" />
+          </View>
+          <Text style={styles.menuText}>My Milestones</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('PersonalJournal' as never)}>
+          <View style={styles.menuIconContainer}>
+            <Edit size={24} color="#FF6B6B" />
+          </View>
+          <Text style={styles.menuText}>Personal Journal</Text>
           <Text style={styles.menuArrow}>›</Text>
         </TouchableOpacity>
 
@@ -335,9 +366,25 @@ export default function ProfileScreen() {
           <Text style={styles.menuArrow}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('SOS' as never)}>
+        <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('SettingsScreen' as never)}>
           <View style={styles.menuIconContainer}>
             <Shield size={24} color="#9B59B6" />
+          </View>
+          <Text style={styles.menuText}>Settings</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('SocialSharing' as never)}>
+          <View style={styles.menuIconContainer}>
+            <UserCircle2 size={24} color="#3498DB" />
+          </View>
+          <Text style={styles.menuText}>Social & Sharing</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('SOS' as never)}>
+          <View style={styles.menuIconContainer}>
+            <Shield size={24} color="#E74C3C" />
           </View>
           <Text style={styles.menuText}>SOS Support</Text>
           <Text style={styles.menuArrow}>›</Text>

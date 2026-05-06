@@ -1,4 +1,4 @@
-import apiClient, { tokenManager } from './client';
+import apiClient from './client';
 
 export interface RegisterRequest {
   username: string;
@@ -41,6 +41,9 @@ export interface ProfileResponse {
     longest_streak: number;
     level_id: number;
     avatar_type: string;
+    bio?: string;
+    theme?: string;
+    avatar_frame?: string;
     days_sober: number;
     created_at: string;
     updated_at: string;
@@ -51,6 +54,8 @@ export interface ProfileResponse {
 export const register = async (data: RegisterRequest): Promise<AuthResponse> => {
   const response = await apiClient.post<AuthResponse>('/auth/register', data);
   if (response.data.token) {
+    // Lazy import tokenManager to avoid circular dependency
+    const { tokenManager } = await import('./client');
     await tokenManager.setToken(response.data.token);
   }
   return response.data;
@@ -60,6 +65,8 @@ export const register = async (data: RegisterRequest): Promise<AuthResponse> => 
 export const login = async (data: LoginRequest): Promise<AuthResponse> => {
   const response = await apiClient.post<AuthResponse>('/auth/login', data);
   if (response.data.token) {
+    // Lazy import tokenManager to avoid circular dependency
+    const { tokenManager } = await import('./client');
     await tokenManager.setToken(response.data.token);
   }
   return response.data;
@@ -73,6 +80,8 @@ export const getProfile = async (): Promise<ProfileResponse> => {
 
 // Logout (clears token)
 export const logout = async (): Promise<void> => {
+  // Lazy import tokenManager to avoid circular dependency
+  const { tokenManager } = await import('./client');
   await tokenManager.removeToken();
 };
 
@@ -86,6 +95,8 @@ export interface ConvertAccountRequest {
 export const convertAccount = async (data: ConvertAccountRequest): Promise<AuthResponse> => {
   const response = await apiClient.post<AuthResponse>('/auth/convert', data);
   if (response.data.token) {
+    // Lazy import tokenManager to avoid circular dependency
+    const { tokenManager } = await import('./client');
     await tokenManager.setToken(response.data.token);
   }
   return response.data;

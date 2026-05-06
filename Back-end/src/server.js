@@ -43,6 +43,8 @@ app.use('/api/sos', require('./routes/sos'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/progress', require('./routes/progress'));
 app.use('/api/insights', require('./routes/insights'));
+app.use('/api/milestones', require('./routes/milestones'));
+app.use('/api/journal', require('./routes/journal'));
 
 // Welcome page route
 app.get('/', (req, res) => {

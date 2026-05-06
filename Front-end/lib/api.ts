@@ -97,4 +97,27 @@ export const api = {
 
   // Insights
   getSmartInsights: apiExports.getSmartInsights,
+
+  // Profile Customization
+  getProfileCustomization: apiExports.getProfileCustomization,
+  updateProfileCustomization: (data: { bio?: string; theme?: string; avatarFrame?: string }) =>
+    apiExports.updateProfileCustomization(data),
+
+  // Milestones
+  getMilestones: apiExports.getMilestones,
+  addMilestone: (title: string, date: string, type?: 'sobriety' | 'custom') =>
+    apiExports.addMilestone({ title, date, type }),
+  updateMilestone: (id: number, data: { title?: string; date?: string }) =>
+    apiExports.updateMilestone(id, data),
+  deleteMilestone: (id: number) => apiExports.deleteMilestone(id),
+
+  // Journal
+  getJournalEntries: apiExports.getJournalEntries,
+  getEntriesByType: apiExports.getEntriesByType,
+  getJournalStats: apiExports.getJournalStats,
+  addJournalEntry: (type: 'note' | 'gratitude' | 'reason' | 'mantra', content: string, entryDate?: string) =>
+    apiExports.addJournalEntry({ type, content, entryDate }),
+  updateJournalEntry: (id: number, data: { content?: string; entryDate?: string }) =>
+    apiExports.updateJournalEntry(id, data),
+  deleteJournalEntry: (id: number) => apiExports.deleteJournalEntry(id),
 };
