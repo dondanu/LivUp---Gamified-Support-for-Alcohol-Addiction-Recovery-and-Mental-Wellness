@@ -46,6 +46,9 @@ export * from './milestones';
 // Journal API
 export * from './journal';
 
+// Settings API (enhanced)
+export * from './settings';
+
 // NOTE: tokenManager is NOT exported here to avoid circular dependencies
 // Import it directly from './client' where needed
 

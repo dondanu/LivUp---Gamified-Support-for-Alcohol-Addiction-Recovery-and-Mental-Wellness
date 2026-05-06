@@ -195,9 +195,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Backend uses username for login, but we'll try email first
-      // If backend supports email login, use email; otherwise extract username
-      const username = email.includes('@') ? email.split('@')[0] : email;
+      // Backend accepts both username and email for login
+      const username = email; // Send as-is, backend will handle both
       
       const response = await login({ username, password });
 
