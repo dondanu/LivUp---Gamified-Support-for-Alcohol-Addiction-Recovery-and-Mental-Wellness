@@ -182,17 +182,51 @@ const completeTask = async (req, res) => {
     const { determineLevel } = require('../utils/helpers');
     const newLevel = determineLevel(newTotalPoints, levels || []);
 
+    // Calculate streak based on daily activity (task completions)
+    const { data: allCompletedTasks } = await query(
+      'SELECT DISTINCT completion_date FROM user_daily_tasks WHERE user_id = ? ORDER BY completion_date DESC',
+      [userId]
+    );
+    
+    // Calculate current streak
+    let currentStreak = 0;
+    if (allCompletedTasks && allCompletedTasks.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      
+      // Sort dates in descending order
+      const dates = allCompletedTasks.map(t => t.completion_date).sort((a, b) => new Date(b) - new Date(a));
+      
+      // Check if user has activity today or yesterday (to continue streak)
+      if (dates[0] === today || dates[0] === yesterday) {
+        currentStreak = 1;
+        
+        // Count consecutive days
+        for (let i = 1; i < dates.length; i++) {
+          const currentDate = new Date(dates[i - 1]);
+          const prevDate = new Date(dates[i]);
+          const dayDiff = Math.floor((currentDate - prevDate) / (1000 * 60 * 60 * 24));
+          
+          if (dayDiff === 1) {
+            currentStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+    
+    // Update longest streak if current is higher
+    const longestStreak = Math.max(currentStreak, profile.longest_streak || 0);
+
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    // Don't override user's chosen avatar - only update points and level
-    await query('UPDATE user_profiles SET total_points = ?, level_id = ?, updated_at = ? WHERE user_id = ?', [
-      newTotalPoints,
-      newLevel.id,
-      now,
-      userId,
-    ]);
+    // Update points, level, and streaks
+    await query(
+      'UPDATE user_profiles SET total_points = ?, level_id = ?, current_streak = ?, longest_streak = ?, updated_at = ? WHERE user_id = ?',
+      [newTotalPoints, newLevel.id, currentStreak, longestStreak, now, userId]
+    );
 
     // Check for first challenge completion milestone
-    const { data: allCompletedTasks } = await query('SELECT id FROM user_daily_tasks WHERE user_id = ?', [userId]);
     const isFirstChallenge = (allCompletedTasks || []).length === 1; // Just completed the first one
     let conversionPrompt = null;
 
@@ -215,6 +249,8 @@ const completeTask = async (req, res) => {
       completion,
       pointsEarned: task.points_reward,
       totalPoints: newTotalPoints,
+      currentStreak,
+      longestStreak,
       conversionPrompt,
     });
   } catch (error) {
