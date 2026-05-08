@@ -28,6 +28,9 @@ export default function ChallengesScreen() {
   const [todayPoints, setTodayPoints] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Active tab state
+  const [activeTab, setActiveTab] = useState<'leaders' | 'challenges' | 'rewards'>('challenges');
+
   // Milestone prompt state
   const [showMilestonePrompt, setShowMilestonePrompt] = useState(false);
   const [milestoneType, setMilestoneType] = useState('');
@@ -372,6 +375,32 @@ export default function ChallengesScreen() {
     }
   };
 
+  // Get challenge card color based on index (for variety)
+  const getChallengeCardColor = (index: number) => {
+    const colors = [
+      '#FF6B6B', // Red
+      '#C44569', // Purple-pink
+      '#8B5CF6', // Purple
+      '#EC4899', // Pink
+      '#F59E0B', // Orange
+    ];
+    return colors[index % colors.length];
+  };
+
+  // Get multiplier based on difficulty
+  const getMultiplier = (difficulty: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'easy':
+        return 'x1';
+      case 'medium':
+        return 'x1.5';
+      case 'hard':
+        return 'x2';
+      default:
+        return 'x1';
+    }
+  };
+
   const isChallengeAccepted = (challengeId: string) => {
     return userChallenges.some(
       (uc) => uc.challenge_id === challengeId && uc.status !== 'completed'
@@ -404,6 +433,37 @@ export default function ChallengesScreen() {
             onPress={() => setShowGuideModal(true)}
             activeOpacity={0.8}>
             <Text style={styles.guideButtonText}>?</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'leaders' && styles.tabActive]}
+            onPress={() => {
+              setActiveTab('leaders');
+              navigation.navigate('leaderboard' as never);
+            }}
+            activeOpacity={0.7}>
+            <Text style={[styles.tabText, activeTab === 'leaders' && styles.tabTextActive]}>
+              Leaders
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'challenges' && styles.tabActive]}
+            onPress={() => setActiveTab('challenges')}
+            activeOpacity={0.7}>
+            <Text style={[styles.tabText, activeTab === 'challenges' && styles.tabTextActive]}>
+              Challenges
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'rewards' && styles.tabActive]}
+            onPress={() => setActiveTab('rewards')}
+            activeOpacity={0.7}>
+            <Text style={[styles.tabText, activeTab === 'rewards' && styles.tabTextActive]}>
+              Rewards
+            </Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -528,16 +588,20 @@ export default function ChallengesScreen() {
                 // We'll mark them as completed in the UI instead of hiding them
                 return challenge.is_active !== false;
               })
-              .map((challenge) => {
+              .map((challenge, index) => {
                 const isCompleted = userChallenges.some(
                   (uc) => uc.challenge_id === challenge.id && uc.status === 'completed'
                 );
-                return { challenge, isCompleted };
+                return { challenge, isCompleted, index };
               })
-              .map(({ challenge, isCompleted }) => (
+              .map(({ challenge, isCompleted, index }) => (
                 <TouchableOpacity
                   key={challenge.id}
-                  style={[styles.challengeCard, isCompleted && styles.challengeCardCompleted]}
+                  style={[
+                    styles.newChallengeCard,
+                    { backgroundColor: getChallengeCardColor(index) },
+                    isCompleted && styles.challengeCardCompleted
+                  ]}
                   activeOpacity={isCompleted ? 1 : 0.7}
                   onPress={() => {
                     if (isCompleted) {
@@ -551,51 +615,41 @@ export default function ChallengesScreen() {
                       challenge
                     } as never);
                   }}>
-                  <View style={styles.challengeContent}>
-                    {isCompleted && (
-                      <View style={styles.completedBadge}>
-                        <CheckCircle size={16} color="#27AE60" />
-                        <Text style={styles.completedText}>Completed Today</Text>
-                      </View>
-                    )}
-                    <View style={styles.challengeHeader}>
-                      <Text style={[styles.challengeTitleDark, isCompleted && styles.challengeTitleCompleted]}>
-                        {challenge.title || challenge.task_name}
-                      </Text>
-                      <View style={styles.pointsBadgeDark}>
-                        <Star size={16} color="#FFD700" />
-                        <Text style={styles.pointsTextDark}>{challenge.points_reward}</Text>
-                      </View>
-                    </View>
-
-                    <Text style={[styles.challengeDescriptionDark, isCompleted && styles.challengeDescriptionDisabled]}>
-                      {challenge.description}
-                    </Text>
-
-                    <View style={styles.challengeFooter}>
-                      <View
-                        style={[
-                          styles.difficultyBadgeDark,
-                          {
-                            backgroundColor:
-                              (challenge.difficulty || 'Easy') === 'Easy'
-                                ? '#4ECDC4'
-                                : (challenge.difficulty || 'Easy') === 'Medium'
-                                  ? '#F39C12'
-                                  : '#E74C3C',
-                          },
-                        ]}>
-                        <Text style={styles.difficultyText}>{challenge.difficulty || 'Easy'}</Text>
-                      </View>
-
-                      <View style={[styles.acceptButton, isCompleted && styles.acceptButtonCompleted]}>
-                        <Target size={20} color="#FFFFFF" />
-                        <Text style={styles.acceptButtonText}>
-                          {isCompleted ? 'Completed' : 'View Details'}
-                        </Text>
-                      </View>
-                    </View>
+                  
+                  {/* Multiplier Badge */}
+                  <View style={styles.multiplierBadge}>
+                    <Text style={styles.multiplierText}>{getMultiplier(challenge.difficulty)}</Text>
                   </View>
+
+                  {/* Challenge Icon */}
+                  <View style={styles.challengeIconContainer}>
+                    <Text style={styles.challengeIcon}>
+                      {index % 5 === 0 ? '🎯' : index % 5 === 1 ? '🌟' : index % 5 === 2 ? '🏆' : index % 5 === 3 ? '💪' : '🎉'}
+                    </Text>
+                  </View>
+
+                  {/* Challenge Title */}
+                  <Text style={styles.newChallengeTitle} numberOfLines={2}>
+                    {challenge.title || challenge.task_name}
+                  </Text>
+
+                  {/* Challenge Description */}
+                  <Text style={styles.newChallengeDescription} numberOfLines={2}>
+                    {challenge.description}
+                  </Text>
+
+                  {/* Points Badge */}
+                  <View style={styles.newPointsBadge}>
+                    <Text style={styles.newPointsText}>{challenge.points_reward}</Text>
+                  </View>
+
+                  {/* Completed Overlay */}
+                  {isCompleted && (
+                    <View style={styles.completedOverlay}>
+                      <CheckCircle size={24} color="#27AE60" />
+                      <Text style={styles.completedOverlayText}>Completed</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))
           )}
@@ -1072,13 +1126,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 60,
-    paddingBottom: 24,
+    paddingBottom: 16,
     paddingHorizontal: 24,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: 20,
   },
   headerTextContainer: {
     flex: 1,
@@ -1093,6 +1148,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     opacity: 0.9,
     marginTop: 4,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 8,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: '#FFFFFF',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    opacity: 0.7,
+  },
+  tabTextActive: {
+    opacity: 1,
   },
   guideButton: {
     width: 40,
@@ -1189,10 +1268,95 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+  // New colorful challenge card design
+  newChallengeCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    minHeight: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    position: 'relative',
+  },
+  multiplierBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  multiplierText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  challengeIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  challengeIcon: {
+    fontSize: 32,
+  },
+  newChallengeTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    lineHeight: 24,
+  },
+  newChallengeDescription: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  newPointsBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 215, 0, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  newPointsText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  completedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    gap: 8,
+  },
+  completedOverlayText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
   challengeCardCompleted: {
-    backgroundColor: '#F0F9F4',
-    borderColor: '#27AE60',
-    borderWidth: 2,
+    opacity: 0.7,
   },
   completedBadge: {
     flexDirection: 'row',

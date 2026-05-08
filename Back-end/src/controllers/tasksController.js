@@ -183,10 +183,12 @@ const completeTask = async (req, res) => {
     const newLevel = determineLevel(newTotalPoints, levels || []);
 
     // Calculate streak based on daily activity (task completions)
+    console.log('[STREAK TRACKING] Starting streak calculation for user:', userId);
     const { data: allCompletedTasks } = await query(
       'SELECT DISTINCT completion_date FROM user_daily_tasks WHERE user_id = ? ORDER BY completion_date DESC',
       [userId]
     );
+    console.log('[STREAK TRACKING] Found completion dates:', allCompletedTasks?.length || 0);
     
     // Calculate current streak
     let currentStreak = 0;
@@ -194,12 +196,17 @@ const completeTask = async (req, res) => {
       const today = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
       
-      // Sort dates in descending order
-      const dates = allCompletedTasks.map(t => t.completion_date).sort((a, b) => new Date(b) - new Date(a));
+      // Sort dates in descending order and convert to string format
+      const dates = allCompletedTasks
+        .map(t => new Date(t.completion_date).toISOString().split('T')[0])
+        .sort((a, b) => new Date(b) - new Date(a));
+      
+      console.log('[STREAK TRACKING] Today:', today, 'Yesterday:', yesterday, 'Latest:', dates[0]);
       
       // Check if user has activity today or yesterday (to continue streak)
       if (dates[0] === today || dates[0] === yesterday) {
         currentStreak = 1;
+        console.log('[STREAK TRACKING] Activity found! Starting streak count...');
         
         // Count consecutive days
         for (let i = 1; i < dates.length; i++) {
@@ -207,17 +214,22 @@ const completeTask = async (req, res) => {
           const prevDate = new Date(dates[i]);
           const dayDiff = Math.floor((currentDate - prevDate) / (1000 * 60 * 60 * 24));
           
+          console.log('[STREAK TRACKING] Comparing', dates[i-1], 'and', dates[i], ':', dayDiff, 'days apart');
+          
           if (dayDiff === 1) {
             currentStreak++;
           } else {
             break;
           }
         }
+      } else {
+        console.log('[STREAK TRACKING] No activity today or yesterday - streak = 0');
       }
     }
     
     // Update longest streak if current is higher
     const longestStreak = Math.max(currentStreak, profile.longest_streak || 0);
+    console.log('[STREAK TRACKING] Calculated streaks - Current:', currentStreak, 'Longest:', longestStreak);
 
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
     // Update points, level, and streaks

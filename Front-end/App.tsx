@@ -42,6 +42,7 @@ import PersonalMilestonesScreen from './app/personal-milestones';
 import PersonalJournalScreen from './app/personal-journal';
 import SettingsScreen from './app/settings-screen';
 import SocialSharingScreen from './app/social-sharing';
+import LeaderboardScreen from './app/leaderboard';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -224,6 +225,11 @@ function RootNavigator() {
           <Stack.Screen 
             name="SocialSharing" 
             component={SocialSharingScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="leaderboard" 
+            component={LeaderboardScreen}
             options={{ headerShown: false }}
           />
         </>
