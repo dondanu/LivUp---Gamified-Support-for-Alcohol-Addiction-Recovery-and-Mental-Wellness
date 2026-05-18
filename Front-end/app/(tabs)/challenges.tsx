@@ -557,7 +557,7 @@ export default function ChallengesScreen() {
             style={[styles.tab, activeTab === 'rewards' && styles.tabActive]}
             onPress={() => {
               setActiveTab('rewards');
-              navigation.navigate('achievement-gallery' as never);
+              navigation.navigate('AchievementGallery' as never);
             }}
             activeOpacity={0.7}>
             <Text style={[styles.tabText, activeTab === 'rewards' && styles.tabTextActive]}>

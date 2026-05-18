@@ -48,6 +48,7 @@ const BADGE_IMAGES = [
 export default function AchievementGalleryScreen() {
   const navigation = useNavigation();
   const [backendAchievements, setBackendAchievements] = useState<UserBadge[]>([]);
+  const [allBackendAchievements, setAllBackendAchievements] = useState<any[]>([]); // All achievements (earned + locked)
   const [frontendBadges, setFrontendBadges] = useState(BADGE_IMAGES);
   const [unmatchedBackendAchievements, setUnmatchedBackendAchievements] = useState<UserBadge[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -68,16 +69,25 @@ export default function AchievementGalleryScreen() {
 
   const loadAchievements = async () => {
     try {
-      const response = await api.getGamificationProfile();
-      if (response?.achievements) {
-        setBackendAchievements(response.achievements);
+      // Fetch user's earned achievements
+      const profileResponse = await api.getGamificationProfile();
+      
+      // Fetch ALL achievements (earned + locked) for unlock conditions
+      const allAchievementsResponse = await api.getAchievements();
+      
+      if (profileResponse?.achievements) {
+        setBackendAchievements(profileResponse.achievements);
+      }
+      
+      if (allAchievementsResponse?.achievements) {
+        setAllBackendAchievements(allAchievementsResponse.achievements);
         
         // Create a copy of frontend badges to update
         const updatedBadges = BADGE_IMAGES.map(badge => ({ ...badge }));
         const matchedBackendIds = new Set<number>();
         
         // PERFECT MATCHING: Match by exact backend achievement name
-        response.achievements.forEach((achievement: UserBadge) => {
+        profileResponse.achievements.forEach((achievement: UserBadge) => {
           const achievementName = (achievement.achievement_name || achievement.name || '').trim();
           
           // Check if this backend achievement has earned_at date (unlocked)
@@ -94,7 +104,7 @@ export default function AchievementGalleryScreen() {
         
         // Find backend achievements that don't match any frontend badge
         // (This should be ZERO if SQL migration was run correctly)
-        const unmatched = response.achievements.filter(
+        const unmatched = profileResponse.achievements.filter(
           (achievement: UserBadge) => !matchedBackendIds.has(achievement.id)
         );
         
@@ -104,6 +114,7 @@ export default function AchievementGalleryScreen() {
     } catch (error) {
       console.log('[AchievementGallery] Backend API not ready, using frontend badges only');
       setBackendAchievements([]);
+      setAllBackendAchievements([]);
       setUnmatchedBackendAchievements([]);
     }
   };
@@ -121,6 +132,21 @@ export default function AchievementGalleryScreen() {
       return unmatchedBackendAchievements;
     }
     return [];
+  };
+
+  const getUnlockCondition = (requirement_type: string, requirement_value: number) => {
+    switch (requirement_type) {
+      case 'points':
+        return `Earn ${requirement_value} total points`;
+      case 'tasks_completed':
+        return `Complete ${requirement_value} challenges`;
+      case 'streak':
+        return `Maintain ${requirement_value} consecutive days with 0 drinks`;
+      case 'days_sober':
+        return `Log ${requirement_value} total days with 0 drinks`;
+      default:
+        return 'Complete the requirement to unlock';
+    }
   };
 
   const unlockedCount = frontendBadges.filter(b => !b.locked).length + unmatchedBackendAchievements.filter(a => a.earned_at != null).length;
@@ -195,11 +221,27 @@ export default function AchievementGalleryScreen() {
               key={`frontend-${badge.id}`}
               style={styles.achievementCard}
               onPress={() => {
+                // Get backend achievement data for unlock conditions
+                // First try to find in earned achievements, then in all achievements
+                const earnedAch = backendAchievements.find(
+                  a => (a.achievement_name || a.name) === badge.backendName
+                );
+                const allAch = allBackendAchievements.find(
+                  a => (a.achievement_name || a.name) === badge.backendName
+                );
+                
+                // Use earned achievement data if available, otherwise use all achievements data
+                const backendAch = earnedAch || allAch;
+                
                 setSelectedBadge({
                   ...badge,
-                  description: badge.locked 
+                  description: backendAch?.description || (badge.locked 
                     ? 'Complete challenges and tasks to unlock this badge!' 
-                    : 'Congratulations! You have unlocked this badge!',
+                    : 'Congratulations! You have unlocked this badge!'),
+                  requirement_type: backendAch?.requirement_type,
+                  requirement_value: backendAch?.requirement_value,
+                  points_reward: backendAch?.points_reward,
+                  earnedDate: earnedAch?.earned_at, // Only show earned date if actually earned
                 });
                 setShowDetailModal(true);
               }}
@@ -230,13 +272,21 @@ export default function AchievementGalleryScreen() {
                 key={`backend-${achievement.id}`}
                 style={styles.achievementCard}
                 onPress={() => {
+                  // Find full achievement data from all achievements
+                  const fullAchData = allBackendAchievements.find(
+                    a => a.id === achievement.id
+                  );
+                  
                   setSelectedBadge({
                     id: achievement.id,
                     name: achievement.achievement_name || achievement.name,
                     image: null, // No image for backend achievements
                     locked: isLocked,
                     category: 'special',
-                    description: achievement.description || (isLocked ? 'Keep working to unlock this achievement!' : 'You have earned this achievement!'),
+                    description: fullAchData?.description || achievement.description || (isLocked ? 'Keep working to unlock this achievement!' : 'You have earned this achievement!'),
+                    requirement_type: fullAchData?.requirement_type,
+                    requirement_value: fullAchData?.requirement_value,
+                    points_reward: fullAchData?.points_reward,
                     earnedDate: achievement.earned_at,
                   });
                   setShowDetailModal(true);
@@ -304,6 +354,21 @@ export default function AchievementGalleryScreen() {
 
                 {selectedBadge.description && (
                   <Text style={styles.modalDescription}>{selectedBadge.description}</Text>
+                )}
+
+                {/* Show unlock condition for locked badges */}
+                {selectedBadge.locked && selectedBadge.requirement_type && (
+                  <View style={styles.unlockSection}>
+                    <Text style={styles.unlockTitle}>How to Unlock:</Text>
+                    <Text style={styles.unlockCondition}>
+                      {getUnlockCondition(selectedBadge.requirement_type, selectedBadge.requirement_value)}
+                    </Text>
+                    {selectedBadge.points_reward && (
+                      <Text style={styles.rewardText}>
+                        Reward: +{selectedBadge.points_reward} points 🪙
+                      </Text>
+                    )}
+                  </View>
                 )}
 
                 {selectedBadge.earnedDate && (
@@ -631,6 +696,30 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
     marginBottom: 20,
     textTransform: 'capitalize',
+  },
+  unlockSection: {
+    width: '100%',
+    backgroundColor: '#F5F7FA',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+  },
+  unlockTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  unlockCondition: {
+    fontSize: 14,
+    color: '#667EEA',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  rewardText: {
+    fontSize: 14,
+    color: '#27AE60',
+    fontWeight: 'bold',
   },
   motivationButton: {
     width: '100%',
