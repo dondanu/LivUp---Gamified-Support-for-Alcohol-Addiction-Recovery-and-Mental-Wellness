@@ -18,6 +18,7 @@ import { Challenge, UserChallenge } from '@/types/database.types';
 import { Target, CheckCircle, Circle, Trophy, Star, Zap, Users } from 'lucide-react-native';
 import MilestonePrompt from '@/components/MilestonePrompt';
 import { anonymousStorage } from '@/lib/anonymousStorage';
+import ChallengeRewardModal from '@/components/ChallengeRewardModal';
 
 export default function ChallengesScreen() {
   const navigation = useNavigation<any>();
@@ -43,6 +44,16 @@ export default function ChallengesScreen() {
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
 
+  // Reward modal state
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [rewardData, setRewardData] = useState<{
+    challengeName: string;
+    points: number;
+    multiplier: string;
+    challengeId: string;
+    challengeEmoji: string;
+  } | null>(null);
+
   // Community data state (dynamic)
   const [communityData, setCommunityData] = useState({
     totalChallenges: 1234,
@@ -57,6 +68,8 @@ export default function ChallengesScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadChallenges();
+      // Reset to challenges tab when screen comes into focus
+      setActiveTab('challenges');
     }, [profile])
   );
 
@@ -190,40 +203,49 @@ export default function ChallengesScreen() {
     }
   };
 
-  const completeChallenge = async (challengeId: string, challengeName: string, pointsReward: number) => {
+  const completeChallenge = async (challengeId: string, challengeName: string, pointsReward: number, challengeEmoji?: string) => {
+    // Calculate emoji if not provided
+    const emoji = challengeEmoji || getChallengeEmoji(challengeId);
+    console.log('[Complete Challenge] ID:', challengeId, 'Name:', challengeName, 'Emoji:', emoji);
+    
+    // Show reward modal first
+    setRewardData({
+      challengeName,
+      points: pointsReward,
+      multiplier: getMultiplier(challenges.find(c => c.id === challengeId)?.difficulty || 'Easy'),
+      challengeId,
+      challengeEmoji: emoji,
+    });
+    setShowRewardModal(true);
+  };
+
+  const handleClaimReward = async () => {
+    if (!rewardData) return;
+
     try {
       if (isAnonymous) {
         // Anonymous mode - save to local storage
         await anonymousStorage.addCompletedTask(
-          parseInt(challengeId),
-          challengeName,
-          pointsReward
+          parseInt(rewardData.challengeId),
+          rewardData.challengeName,
+          rewardData.points
         );
         
         // Check for milestones
         const milestoneCheck = await anonymousStorage.checkMilestones();
         
-        // Show success alert FIRST
-        Alert.alert('Congratulations!', `You earned ${pointsReward} points!`, [
-          {
-            text: 'Awesome!',
-            onPress: async () => {
-              await refreshAnonymousData();
-              loadChallenges();
-              
-              // After user clicks "Awesome!", show milestone prompt if needed
-              if (milestoneCheck.shouldPrompt) {
-                setMilestoneType(milestoneCheck.milestoneType || '');
-                setMilestoneData(milestoneCheck.milestoneData);
-                setShowMilestonePrompt(true);
-              }
-            },
-          },
-        ]);
+        await refreshAnonymousData();
+        loadChallenges();
+        
+        // After user claims reward, show milestone prompt if needed
+        if (milestoneCheck.shouldPrompt) {
+          setMilestoneType(milestoneCheck.milestoneType || '');
+          setMilestoneData(milestoneCheck.milestoneData);
+          setShowMilestonePrompt(true);
+        }
       } else if (profile?.id) {
         // Registered user - use API
-        const response = await api.completeChallenge(challengeId);
-        Alert.alert('Congratulations!', `You earned ${pointsReward} points!`);
+        const response = await api.completeChallenge(rewardData.challengeId);
         
         // Force refresh profile AND reload challenges to get updated points
         await refreshProfile();
@@ -401,6 +423,13 @@ export default function ChallengesScreen() {
     }
   };
 
+  // Get challenge emoji based on index
+  const getChallengeEmoji = (challengeId: string) => {
+    const index = challenges.findIndex(c => c.id === challengeId);
+    if (index === -1) return '🎯';
+    return index % 5 === 0 ? '🎯' : index % 5 === 1 ? '🌟' : index % 5 === 2 ? '🏆' : index % 5 === 3 ? '💪' : '🎉';
+  };
+
   const isChallengeAccepted = (challengeId: string) => {
     return userChallenges.some(
       (uc) => uc.challenge_id === challengeId && uc.status !== 'completed'
@@ -459,7 +488,10 @@ export default function ChallengesScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'rewards' && styles.tabActive]}
-            onPress={() => setActiveTab('rewards')}
+            onPress={() => {
+              setActiveTab('rewards');
+              navigation.navigate('rewards' as never);
+            }}
             activeOpacity={0.7}>
             <Text style={[styles.tabText, activeTab === 'rewards' && styles.tabTextActive]}>
               Rewards
@@ -548,13 +580,14 @@ export default function ChallengesScreen() {
 
                         <TouchableOpacity
                           style={styles.completeButton}
-                          onPress={() =>
+                          onPress={() => {
                             completeChallenge(
                               userChallenge.challenge_id,
                               userChallenge.challenges?.title || '',
                               userChallenge.challenges?.points_reward || 0
-                            )
-                          }>
+                              // Emoji will be calculated automatically
+                            );
+                          }}>
                           <CheckCircle size={20} color="#FFFFFF" />
                           <Text style={styles.completeButtonText}>Complete</Text>
                         </TouchableOpacity>
@@ -611,8 +644,11 @@ export default function ChallengesScreen() {
                       );
                       return;
                     }
+                    // Pass the emoji along with challenge
+                    const emoji = index % 5 === 0 ? '🎯' : index % 5 === 1 ? '🌟' : index % 5 === 2 ? '🏆' : index % 5 === 3 ? '💪' : '🎉';
                     navigation.navigate('ChallengeDetail' as never, { 
-                      challenge
+                      challenge,
+                      challengeEmoji: emoji, // Pass emoji to detail screen
                     } as never);
                   }}>
                   
@@ -955,6 +991,22 @@ export default function ChallengesScreen() {
         milestoneData={milestoneData}
         onDismiss={handleDismissMilestone}
       />
+
+      {/* Challenge Reward Modal */}
+      {rewardData && (
+        <ChallengeRewardModal
+          visible={showRewardModal}
+          challengeName={rewardData.challengeName}
+          points={rewardData.points}
+          multiplier={rewardData.multiplier}
+          challengeEmoji={rewardData.challengeEmoji}
+          onClaimReward={handleClaimReward}
+          onClose={() => {
+            setShowRewardModal(false);
+            setRewardData(null);
+          }}
+        />
+      )}
 
       {/* Completed Challenges Modal */}
       <Modal visible={showCompletedModal} animationType="slide" transparent>
