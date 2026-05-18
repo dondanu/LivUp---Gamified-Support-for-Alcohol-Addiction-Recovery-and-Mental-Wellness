@@ -19,6 +19,7 @@ import { Target, CheckCircle, Circle, Trophy, Star, Zap, Users } from 'lucide-re
 import MilestonePrompt from '@/components/MilestonePrompt';
 import { anonymousStorage } from '@/lib/anonymousStorage';
 import ChallengeRewardModal from '@/components/ChallengeRewardModal';
+import AchievementUnlockedModal from '@/components/AchievementUnlockedModal';
 
 export default function ChallengesScreen() {
   const navigation = useNavigation<any>();
@@ -53,6 +54,15 @@ export default function ChallengesScreen() {
     challengeId: string;
     challengeEmoji: string;
   } | null>(null);
+
+  // Achievement unlock modal state
+  const [showAchievementModal, setShowAchievementModal] = useState(false);
+  const [unlockedAchievement, setUnlockedAchievement] = useState<{
+    achievement_name: string;
+    description: string;
+    points_reward: number;
+  } | null>(null);
+  const [achievementNumber, setAchievementNumber] = useState(1);
 
   // Community data state (dynamic)
   const [communityData, setCommunityData] = useState({
@@ -237,6 +247,10 @@ export default function ChallengesScreen() {
         await refreshAnonymousData();
         loadChallenges();
         
+        // Close reward modal first
+        setShowRewardModal(false);
+        setRewardData(null);
+        
         // After user claims reward, show milestone prompt if needed
         if (milestoneCheck.shouldPrompt) {
           setMilestoneType(milestoneCheck.milestoneType || '');
@@ -245,11 +259,64 @@ export default function ChallengesScreen() {
         }
       } else if (profile?.id) {
         // Registered user - use API
+        // Get achievements BEFORE completing task
+        const beforeAchievements = await api.getGamificationProfile();
+        const beforeAchievementIds = new Set(
+          (beforeAchievements?.achievements || []).map((a: any) => a.id)
+        );
+        
+        console.log('[Achievement Check] Before:', beforeAchievementIds.size, 'achievements');
+        
+        // Complete the task
         const response = await api.completeChallenge(rewardData.challengeId);
+        
+        // Close reward modal first
+        setShowRewardModal(false);
+        setRewardData(null);
         
         // Force refresh profile AND reload challenges to get updated points
         await refreshProfile();
         await loadChallenges();
+        
+        // Get achievements AFTER completing task
+        const afterAchievements = await api.getGamificationProfile();
+        const afterAchievementsList = afterAchievements?.achievements || [];
+        
+        console.log('[Achievement Check] After:', afterAchievementsList.length, 'achievements');
+        
+        // Find NEW achievements (not in before list)
+        const newAchievements = afterAchievementsList.filter(
+          (a: any) => !beforeAchievementIds.has(a.id) && a.earned_at != null
+        );
+        
+        console.log('[Achievement Check] New achievements:', newAchievements.length);
+        
+        // Show achievement unlock modal for the NEWEST achievement
+        if (newAchievements.length > 0) {
+          // Sort by earned_at to get the most recent
+          const sortedNew = newAchievements.sort((a: any, b: any) => 
+            new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime()
+          );
+          const newestAchievement = sortedNew[0];
+          
+          console.log('[Achievement Check] Showing modal for:', newestAchievement.achievement_name || newestAchievement.name);
+          
+          // Count total achievements to show "1st", "2nd", "3rd", etc.
+          const totalEarned = afterAchievementsList.filter((a: any) => a.earned_at != null).length;
+          
+          // Wait a bit for reward modal to close, then show achievement modal
+          setTimeout(() => {
+            setUnlockedAchievement({
+              achievement_name: newestAchievement.achievement_name || newestAchievement.name,
+              description: newestAchievement.description || 'Congratulations on unlocking this achievement!',
+              points_reward: newestAchievement.points_reward || 0,
+            });
+            setAchievementNumber(totalEarned);
+            setShowAchievementModal(true);
+          }, 500);
+        } else {
+          console.log('[Achievement Check] No new achievements to show');
+        }
       }
     } catch (error: any) {
       console.error('Error completing challenge:', error);
@@ -490,7 +557,7 @@ export default function ChallengesScreen() {
             style={[styles.tab, activeTab === 'rewards' && styles.tabActive]}
             onPress={() => {
               setActiveTab('rewards');
-              navigation.navigate('rewards' as never);
+              navigation.navigate('achievement-gallery' as never);
             }}
             activeOpacity={0.7}>
             <Text style={[styles.tabText, activeTab === 'rewards' && styles.tabTextActive]}>
@@ -654,7 +721,7 @@ export default function ChallengesScreen() {
                   
                   {/* Multiplier Badge */}
                   <View style={styles.multiplierBadge}>
-                    <Text style={styles.multiplierText}>{getMultiplier(challenge.difficulty)}</Text>
+                    <Text style={styles.multiplierText}>💎 {getMultiplier(challenge.difficulty)}</Text>
                   </View>
 
                   {/* Challenge Icon */}
@@ -676,7 +743,7 @@ export default function ChallengesScreen() {
 
                   {/* Points Badge */}
                   <View style={styles.newPointsBadge}>
-                    <Text style={styles.newPointsText}>{challenge.points_reward}</Text>
+                    <Text style={styles.newPointsText}>{challenge.points_reward} 🪙</Text>
                   </View>
 
                   {/* Completed Overlay */}
@@ -1004,6 +1071,19 @@ export default function ChallengesScreen() {
           onClose={() => {
             setShowRewardModal(false);
             setRewardData(null);
+          }}
+        />
+      )}
+
+      {/* Achievement Unlock Modal */}
+      {unlockedAchievement && (
+        <AchievementUnlockedModal
+          visible={showAchievementModal}
+          achievement={unlockedAchievement}
+          achievementNumber={achievementNumber}
+          onClose={() => {
+            setShowAchievementModal(false);
+            setUnlockedAchievement(null);
           }}
         />
       )}
@@ -1380,7 +1460,7 @@ const styles = StyleSheet.create({
   },
   newPointsBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 215, 0, 0.9)',
+    backgroundColor: '#27AE60',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -1388,7 +1468,7 @@ const styles = StyleSheet.create({
   newPointsText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2C3E50',
+    color: '#FFFFFF',
   },
   completedOverlay: {
     position: 'absolute',

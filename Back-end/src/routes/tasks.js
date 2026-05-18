@@ -10,6 +10,7 @@ const {
   getTodayProgress,
   getTaskStatistics,
   uncompleteTask,
+  claimAchievement,
 } = require('../controllers/tasksController');
 
 router.get('/daily', getDailyTasks);
@@ -32,5 +33,16 @@ router.get('/today', authenticateToken, getTodayProgress);
 router.get('/statistics', authenticateToken, getTaskStatistics);
 
 router.delete('/:completionId', authenticateToken, uncompleteTask);
+
+// NEW: Claim achievement endpoint
+router.post(
+  '/claim-achievement',
+  authenticateToken,
+  [
+    body('achievementId').isInt().withMessage('Valid achievement ID is required'),
+    validate,
+  ],
+  claimAchievement
+);
 
 module.exports = router;

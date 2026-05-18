@@ -22,6 +22,7 @@ import { getChallengeByTitle, getChallengeById, getChallengeIdFromTitle, Challen
 import { anonymousStorage } from '@/lib/anonymousStorage';
 import MilestonePrompt from '@/components/MilestonePrompt';
 import ChallengeRewardModal from '@/components/ChallengeRewardModal';
+import AchievementUnlockedModal from '@/components/AchievementUnlockedModal';
 
 export default function ChallengeDetailScreen() {
   const navigation = useNavigation<any>();
@@ -43,6 +44,16 @@ export default function ChallengeDetailScreen() {
   
   // Reward modal state
   const [showRewardModal, setShowRewardModal] = useState(false);
+  
+  // Achievement unlock modal state
+  const [showAchievementModal, setShowAchievementModal] = useState(false);
+  const [unlockedAchievement, setUnlockedAchievement] = useState<{
+    achievement_name: string;
+    description: string;
+    points_reward: number;
+    id?: number; // Store achievement ID for claiming
+  } | null>(null);
+  const [achievementNumber, setAchievementNumber] = useState(1);
   
   // Get challenge from route params
   const challenge = route.params?.challenge as Challenge;
@@ -290,11 +301,48 @@ export default function ChallengeDetailScreen() {
         }
       } else {
         // Registered user - use API
-        await api.completeTask(challengeApiId.toString());
+        // Complete the task (backend will return eligible achievements)
+        const response = await api.completeTask(challengeApiId.toString());
+        
+        console.log('[Achievement Check] Task completed, response:', response);
+        
         setIsCompleted(true);
         setIsStarted(false);
         await refreshProfile();
-        navigation.goBack();
+        
+        // Check if there are eligible achievements
+        const eligibleAchievements = (response as any).eligibleAchievements || [];
+        
+        console.log('[Achievement Check] Eligible achievements:', eligibleAchievements.length);
+        
+        if (eligibleAchievements.length > 0) {
+          // Show modal for the FIRST eligible achievement
+          const firstAchievement = eligibleAchievements[0];
+          
+          console.log('[Achievement Check] Showing modal for:', firstAchievement.achievement_name);
+          
+          // Get current total achievements to show number
+          const gamificationProfile = await api.getGamificationProfile();
+          const totalEarned = (gamificationProfile?.achievements || []).filter((a: any) => a.earned_at != null).length;
+          
+          // Wait a bit, then show achievement modal
+          setTimeout(() => {
+            setUnlockedAchievement({
+              achievement_name: firstAchievement.achievement_name,
+              description: firstAchievement.description,
+              points_reward: firstAchievement.points_reward,
+              id: firstAchievement.id, // Store ID for claiming
+            });
+            setAchievementNumber(totalEarned + 1); // Next achievement number
+            setShowAchievementModal(true);
+          }, 500);
+        } else {
+          console.log('[Achievement Check] No eligible achievements');
+          // No achievements, just go back
+          setTimeout(() => {
+            navigation.goBack();
+          }, 500);
+        }
       }
     } catch (error: any) {
       console.error('Error completing challenge:', error);
@@ -626,6 +674,33 @@ export default function ChallengeDetailScreen() {
         onClaimReward={handleClaimReward}
         onClose={() => setShowRewardModal(false)}
       />
+
+      {/* Achievement Unlock Modal */}
+      {unlockedAchievement && (
+        <AchievementUnlockedModal
+          visible={showAchievementModal}
+          achievement={unlockedAchievement}
+          achievementNumber={achievementNumber}
+          onClose={async () => {
+            // Claim the achievement when user clicks "CLAIM IT!"
+            if (unlockedAchievement.id) {
+              try {
+                console.log('[Achievement Claim] Claiming achievement:', unlockedAchievement.id);
+                await api.claimAchievement(unlockedAchievement.id);
+                console.log('[Achievement Claim] Successfully claimed!');
+                await refreshProfile(); // Refresh to get updated points
+              } catch (error) {
+                console.error('[Achievement Claim] Error:', error);
+              }
+            }
+            
+            setShowAchievementModal(false);
+            setUnlockedAchievement(null);
+            // Navigate back after closing achievement modal
+            navigation.goBack();
+          }}
+        />
+      )}
     </View>
   );
 }

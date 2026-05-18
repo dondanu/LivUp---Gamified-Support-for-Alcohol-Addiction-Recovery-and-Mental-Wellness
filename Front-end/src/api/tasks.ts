@@ -91,3 +91,23 @@ export const deleteTaskCompletion = async (completionId: string): Promise<{ mess
   return response.data;
 };
 
+// NEW API: Claim Achievement
+export interface ClaimAchievementRequest {
+  achievementId: number;
+}
+
+export interface ClaimAchievementResponse {
+  message: string;
+  achievement: {
+    id: number;
+    achievement_name: string;
+    description: string;
+    points_reward: number;
+  };
+  totalPoints: number;
+}
+
+export const claimAchievement = async (data: ClaimAchievementRequest): Promise<ClaimAchievementResponse> => {
+  const response = await apiClient.post<ClaimAchievementResponse>('/tasks/claim-achievement', data);
+  return response.data;
+};

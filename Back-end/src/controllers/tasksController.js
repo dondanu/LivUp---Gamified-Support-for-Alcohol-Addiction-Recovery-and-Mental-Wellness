@@ -256,6 +256,88 @@ const completeTask = async (req, res) => {
       }
     }
 
+    // AUTO-CHECK ACHIEVEMENTS (BUT DON'T SAVE YET!)
+    console.log('[ACHIEVEMENTS] Checking eligible achievements for user:', userId);
+    try {
+      const { checkAchievementEligibility, calculateStreak, calculateTotalSoberDays } = require('../utils/helpers');
+      
+      // Get drink logs for streak calculation
+      const { data: drinkLogs } = await query(
+        'SELECT * FROM drink_logs WHERE user_id = ? ORDER BY log_date DESC',
+        [userId]
+      );
+      
+      // Calculate proper streak from drink logs
+      const drinkStreak = calculateStreak(drinkLogs || []);
+      const daysSober = calculateTotalSoberDays(drinkLogs || []);
+      
+      // Get TOTAL tasks completed (not just unique dates)
+      const { data: allTasksCompleted } = await query(
+        'SELECT * FROM user_daily_tasks WHERE user_id = ?',
+        [userId]
+      );
+      const totalTasksCompleted = (allTasksCompleted || []).length;
+      
+      console.log('[ACHIEVEMENTS] User stats - Points:', newTotalPoints, 'Tasks:', totalTasksCompleted, 'Drink Streak:', drinkStreak, 'Days Sober:', daysSober);
+      
+      const userStats = {
+        days_sober: daysSober,
+        current_streak: drinkStreak,
+        tasks_completed: totalTasksCompleted,
+        drinks_avoided: (drinkLogs || []).filter(l => l.drink_count === 0).length,
+      };
+      
+      // Get all achievements
+      const { data: allAchievements } = await query('SELECT * FROM achievements');
+      
+      // Get user's earned achievements
+      const { data: userAchievements } = await query(
+        'SELECT achievement_id FROM user_achievements WHERE user_id = ?',
+        [userId]
+      );
+      const earnedIds = new Set((userAchievements || []).map(ua => ua.achievement_id));
+      
+      const eligibleAchievements = [];
+      
+      // Check which achievements are eligible (BUT DON'T SAVE!)
+      for (const achievement of allAchievements || []) {
+        if (earnedIds.has(achievement.id)) continue;
+        
+        // Check points-based achievements
+        if (achievement.requirement_type === 'points' && newTotalPoints >= achievement.requirement_value) {
+          eligibleAchievements.push(achievement);
+        }
+        // Check other achievements
+        else if (checkAchievementEligibility(userStats, achievement)) {
+          eligibleAchievements.push(achievement);
+        }
+      }
+      
+      console.log('[ACHIEVEMENTS] Found', eligibleAchievements.length, 'eligible achievements (NOT saved yet)');
+      
+      // Return eligible achievements in response (frontend will show modal and claim)
+      res.status(201).json({
+        message: 'Task completed successfully',
+        completion,
+        pointsEarned: task.points_reward,
+        totalPoints: newTotalPoints,
+        currentStreak,
+        longestStreak,
+        eligibleAchievements: eligibleAchievements.map(a => ({
+          id: a.id,
+          achievement_name: a.achievement_name,
+          description: a.description,
+          points_reward: a.points_reward,
+          requirement_type: a.requirement_type,
+          requirement_value: a.requirement_value,
+        })),
+      });
+      return;
+    } catch (achError) {
+      console.error('[ACHIEVEMENTS] Error checking achievements:', achError.message);
+      // Don't fail the task completion if achievement check fails
+    }
+
     res.status(201).json({
       message: 'Task completed successfully',
       completion,
@@ -263,9 +345,69 @@ const completeTask = async (req, res) => {
       totalPoints: newTotalPoints,
       currentStreak,
       longestStreak,
-      conversionPrompt,
     });
   } catch (error) {
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+};
+
+// NEW ENDPOINT: Claim Achievement
+const claimAchievement = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { achievementId } = req.body;
+
+    if (!achievementId) {
+      return res.status(400).json({ error: 'Achievement ID is required' });
+    }
+
+    // Check if achievement exists
+    const { data: achievement } = await queryOne('SELECT * FROM achievements WHERE id = ?', [achievementId]);
+    
+    if (!achievement) {
+      return res.status(404).json({ error: 'Achievement not found' });
+    }
+
+    // Check if already claimed
+    const { data: existing } = await queryOne(
+      'SELECT * FROM user_achievements WHERE user_id = ? AND achievement_id = ?',
+      [userId, achievementId]
+    );
+
+    if (existing) {
+      return res.status(409).json({ error: 'Achievement already claimed' });
+    }
+
+    // Save achievement
+    await query(
+      'INSERT INTO user_achievements (user_id, achievement_id) VALUES (?, ?)',
+      [userId, achievementId]
+    );
+
+    // Add achievement points to user's total
+    const { data: profile } = await queryOne('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+    const newTotalPoints = profile.total_points + achievement.points_reward;
+    
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    await query(
+      'UPDATE user_profiles SET total_points = ?, updated_at = ? WHERE user_id = ?',
+      [newTotalPoints, now, userId]
+    );
+
+    console.log('[ACHIEVEMENTS] Claimed:', achievement.achievement_name, '+', achievement.points_reward, 'pts');
+
+    res.status(200).json({
+      message: 'Achievement claimed successfully',
+      achievement: {
+        id: achievement.id,
+        achievement_name: achievement.achievement_name,
+        description: achievement.description,
+        points_reward: achievement.points_reward,
+      },
+      totalPoints: newTotalPoints,
+    });
+  } catch (error) {
+    console.error('[ACHIEVEMENTS] Error claiming achievement:', error);
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 };
@@ -407,4 +549,5 @@ module.exports = {
   getTodayProgress,
   getTaskStatistics,
   uncompleteTask,
+  claimAchievement,
 };

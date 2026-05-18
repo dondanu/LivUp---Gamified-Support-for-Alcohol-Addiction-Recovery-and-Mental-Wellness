@@ -76,6 +76,8 @@ export const api = {
   getTodayTasks: apiExports.getTodayTasks,
   getTaskStatistics: apiExports.getTaskStatistics,
   deleteTaskCompletion: apiExports.deleteTaskCompletion,
+  claimAchievement: (achievementId: number) =>
+    apiExports.claimAchievement({ achievementId }),
 
   // Challenges (using tasks)
   getChallenges: async () => {
