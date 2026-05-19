@@ -4,11 +4,14 @@ const { calculateStreak, calculateTotalSoberDays } = require('../utils/helpers')
 const logDrink = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { drinkCount, logDate, notes } = req.body;
+    const { drinkCount, logDate, notes, drinkPrice } = req.body;
 
     if (drinkCount === undefined || drinkCount < 0) {
       return res.status(400).json({ error: 'Valid drink count is required' });
     }
+
+    // Default drink price: RS 500 per drink if not provided
+    const price = drinkPrice !== undefined ? drinkPrice : (drinkCount * 500);
 
     const date = logDate || new Date().toISOString().split('T')[0];
 
@@ -19,17 +22,18 @@ const logDrink = async (req, res) => {
 
     let drinkLog;
     if (existingLog) {
-      await query('UPDATE drink_logs SET drink_count = ?, notes = ? WHERE id = ?', [
+      await query('UPDATE drink_logs SET drink_count = ?, notes = ?, drink_price = ? WHERE id = ?', [
         drinkCount,
         notes || existingLog.notes,
+        price,
         existingLog.id,
       ]);
       const { data: updatedLog } = await queryOne('SELECT * FROM drink_logs WHERE id = ?', [existingLog.id]);
       drinkLog = updatedLog;
     } else {
       const { data: insertResult, error: insertError } = await query(
-        'INSERT INTO drink_logs (user_id, drink_count, log_date, notes) VALUES (?, ?, ?, ?)',
-        [userId, drinkCount, date, notes || null]
+        'INSERT INTO drink_logs (user_id, drink_count, log_date, notes, drink_price) VALUES (?, ?, ?, ?, ?)',
+        [userId, drinkCount, date, notes || null, price]
       );
 
       if (insertError || !insertResult) {

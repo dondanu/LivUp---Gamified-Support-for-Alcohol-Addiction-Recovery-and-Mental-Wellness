@@ -120,18 +120,34 @@ export default function AchievementGalleryScreen() {
   };
 
   const getFilteredBadges = () => {
-    if (selectedCategory === 'all') {
-      return frontendBadges;
+    let filtered = frontendBadges;
+    
+    if (selectedCategory !== 'all') {
+      filtered = frontendBadges.filter(badge => badge.category === selectedCategory);
     }
-    return frontendBadges.filter(badge => badge.category === selectedCategory);
+    
+    // Sort: Unlocked badges first, then locked badges
+    return filtered.sort((a, b) => {
+      if (a.locked === b.locked) return 0; // Same status, keep original order
+      return a.locked ? 1 : -1; // Unlocked (false) comes first
+    });
   };
 
   const getFilteredUnmatchedAchievements = () => {
     // Unmatched backend achievements are shown in 'all' and 'special' categories
+    let unmatched = [];
+    
     if (selectedCategory === 'all' || selectedCategory === 'special') {
-      return unmatchedBackendAchievements;
+      unmatched = unmatchedBackendAchievements;
     }
-    return [];
+    
+    // Sort: Unlocked achievements first, then locked
+    return unmatched.sort((a, b) => {
+      const aLocked = a.earned_at == null;
+      const bLocked = b.earned_at == null;
+      if (aLocked === bLocked) return 0;
+      return aLocked ? 1 : -1; // Unlocked comes first
+    });
   };
 
   const getUnlockCondition = (requirement_type: string, requirement_value: number) => {

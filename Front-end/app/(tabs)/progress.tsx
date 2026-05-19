@@ -19,6 +19,11 @@ import { TrendingUp, Award, Calendar, Sparkles, AlertTriangle, Plus, Minus, Save
 import { useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CalendarView from '@/components/CalendarView';
+import { CalendarDay } from '@/src/api/progress';
+import WeeklySummaryCard from '@/components/WeeklySummaryCard';
+import StreakVisualization from '@/components/StreakVisualization';
+import QuickStatsCard from '@/components/QuickStatsCard';
 
 const INTRO_SHOWN_KEY = '@intro_shown';
 const { width } = Dimensions.get('window');
@@ -338,9 +343,20 @@ export default function ProgressScreen() {
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // Calendar state
+  const [calendarData, setCalendarData] = useState<CalendarDay[]>([]);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [registrationMonth, setRegistrationMonth] = useState<string | null>(null);
+  const [registrationDate, setRegistrationDate] = useState<string | null>(null);
+
   // Tracking states (moved from track tab)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [drinksCount, setDrinksCount] = useState(0);
+  const [drinkPrice, setDrinkPrice] = useState(500); // Default RS 500
   const [notes, setNotes] = useState('');
   const [mood, setMood] = useState('');
   const [moodNotes, setMoodNotes] = useState('');
@@ -382,7 +398,12 @@ export default function ProgressScreen() {
     loadProgressData();
     loadDayData();
     loadInsights();
+    loadCalendarData();
   }, [profile, isAnonymous, anonymousData, selectedPeriod, selectedDate]);
+
+  useEffect(() => {
+    loadCalendarData();
+  }, [calendarMonth]);
 
   const loadInsights = async () => {
     if (!profile?.id || isAnonymous) return;
@@ -397,6 +418,33 @@ export default function ProgressScreen() {
     } finally {
       setInsightsLoading(false);
     }
+  };
+
+  const loadCalendarData = async () => {
+    if (!profile?.id || isAnonymous) return;
+
+    setCalendarLoading(true);
+    try {
+      const response = await api.getCalendarData(calendarMonth);
+      setCalendarData(response.calendar || []);
+      
+      // Set registration info on first load
+      if (response.registrationMonth && !registrationMonth) {
+        setRegistrationMonth(response.registrationMonth);
+      }
+      if (response.registrationDate && !registrationDate) {
+        setRegistrationDate(response.registrationDate);
+      }
+    } catch (error) {
+      console.error('Error loading calendar data:', error);
+      setCalendarData([]);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleCalendarMonthChange = (month: string) => {
+    setCalendarMonth(month);
   };
 
   const loadTrackHistory = async () => {
@@ -549,11 +597,14 @@ export default function ProgressScreen() {
 
     setTrackingLoading(true);
     try {
-      await api.logDrink(drinksCount, selectedDate, notes);
+      // Calculate total price: if no drinks, price = 0
+      const totalPrice = drinksCount === 0 ? 0 : drinkPrice;
+      await api.logDrink(drinksCount, selectedDate, notes, totalPrice);
       Alert.alert('Success', 'Drink log saved successfully');
       // Reload progress data to update charts
       loadProgressData();
       loadInsights(); // Reload insights after saving
+      loadCalendarData(); // Reload calendar data
     } catch (error: any) {
       console.error('Error saving drink log:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to save drink log';
@@ -1143,6 +1194,25 @@ export default function ProgressScreen() {
                     <Plus size={20} color="#FFFFFF" />
                   </TouchableOpacity>
                 </View>
+                
+                {/* Drink Price Input */}
+                {drinksCount > 0 && (
+                  <View style={styles.priceInputContainer}>
+                    <Text style={styles.priceLabel}>Price (RS):</Text>
+                    <TextInput
+                      style={styles.priceInput}
+                      value={drinkPrice.toString()}
+                      onChangeText={(text) => {
+                        const price = parseInt(text) || 0;
+                        setDrinkPrice(Math.max(0, price));
+                      }}
+                      keyboardType="numeric"
+                      placeholder="500"
+                      placeholderTextColor="#95A5A6"
+                    />
+                  </View>
+                )}
+                
                 <TouchableOpacity
                   style={styles.saveButton}
                   onPress={saveDrinkLog}
@@ -1213,6 +1283,35 @@ export default function ProgressScreen() {
             </View>
           </View>
         )}
+
+        {/* Calendar Section */}
+        {!isAnonymous && (
+          <View style={styles.calendarSection}>
+            <CalendarView
+              data={calendarData}
+              currentMonth={calendarMonth}
+              onMonthChange={handleCalendarMonthChange}
+              loading={calendarLoading}
+              registrationMonth={registrationMonth}
+              registrationDate={registrationDate}
+            />
+          </View>
+        )}
+
+        {/* NEW: Weekly Summary Card */}
+        {!isAnonymous && <WeeklySummaryCard />}
+
+        {/* NEW: Streak Visualization */}
+        {!isAnonymous && profile && (
+          <StreakVisualization
+            currentStreak={profile.current_streak || 0}
+            longestStreak={profile.longest_streak || 0}
+            daysSober={profile.days_sober || 0}
+          />
+        )}
+
+        {/* NEW: Quick Stats Card */}
+        {!isAnonymous && <QuickStatsCard />}
 
         {/* Smart Insights Section */}
         {!isAnonymous && (
@@ -2575,5 +2674,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     marginRight: 8,
+  },
+  // Calendar Section Styles
+  calendarSection: {
+    marginBottom: 16,
+  },
+  // Price Input Styles
+  priceInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  priceLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginRight: 8,
+  },
+  priceInput: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    minWidth: 80,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
 });

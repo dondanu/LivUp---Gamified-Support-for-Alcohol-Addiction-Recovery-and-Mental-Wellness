@@ -4,12 +4,14 @@ export interface LogDrinkRequest {
   drinkCount: number;
   logDate?: string;
   notes?: string;
+  drinkPrice?: number; // Price in Sri Lankan Rupees
 }
 
 export interface DrinkLog {
   id: string;
   user_id: string;
   drink_count: number;
+  drink_price?: number; // Price in Sri Lankan Rupees
   log_date: string;
   notes: string | null;
   created_at: string;

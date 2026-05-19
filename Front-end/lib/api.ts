@@ -18,8 +18,8 @@ export const api = {
   logout: apiExports.logout,
 
   // Drinks
-  logDrink: (drinkCount: number, logDate?: string, notes?: string) =>
-    apiExports.logDrink({ drinkCount, logDate, notes }),
+  logDrink: (drinkCount: number, logDate?: string, notes?: string, drinkPrice?: number) =>
+    apiExports.logDrink({ drinkCount, logDate, notes, drinkPrice }),
   getDrinkLogs: apiExports.getDrinkLogs,
   getDrinkStatistics: apiExports.getDrinkStatistics,
   deleteDrinkLog: apiExports.deleteDrinkLog,
@@ -96,6 +96,9 @@ export const api = {
   getMonthlyProgress: apiExports.getMonthlyProgress,
   getOverallProgress: apiExports.getOverallProgress,
   getDashboard: apiExports.getDashboard,
+  getCalendarData: apiExports.getCalendarData,
+  getWeeklyComparison: apiExports.getWeeklyComparison,
+  getStatsSummary: apiExports.getStatsSummary,
 
   // Insights
   getSmartInsights: apiExports.getSmartInsights,
