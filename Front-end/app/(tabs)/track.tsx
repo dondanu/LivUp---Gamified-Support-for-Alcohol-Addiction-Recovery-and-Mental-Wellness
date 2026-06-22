@@ -221,7 +221,7 @@ export default function JourneyScreen() {
             {/* The Shadow Within - Stage 1 - SVG ELLIPSE BUTTON */}
             <TouchableOpacity 
               style={[styles.stageContainer, { 
-                top: height * 0.08, 
+                top: height * 0.072, 
                 left: width * 0.7 - 90 
               }]}
             >
@@ -249,7 +249,7 @@ export default function JourneyScreen() {
             {/* Mastering Magics - Stage 2 - SVG ELLIPSE BUTTON */}
             <TouchableOpacity 
               style={[styles.stageContainer, { 
-                top: height * 0.28, 
+                top: height * 0.274, 
                 left: width * 0.53 - 90 
               }]}
             >
@@ -277,7 +277,7 @@ export default function JourneyScreen() {
             {/* Agonia's Path - Stage 3 - SVG ELLIPSE BUTTON */}
             <TouchableOpacity 
               style={[styles.stageContainer, { 
-                top: height * 0.48, 
+                top: height * 0.473, 
                 left: width * 0.65 - 80 
               }]}
             >
@@ -305,7 +305,7 @@ export default function JourneyScreen() {
             {/* The Hidden Cave - Stage 4 - SVG ELLIPSE BUTTON */}
             <TouchableOpacity 
               style={[styles.stageContainer, { 
-                top: height * 0.68, 
+                top: height * 0.673, 
                 left: width * 0.5 - 80 
               }]}
             >
